@@ -567,3 +567,9 @@ export function getLeagueBySlug(slug: string): League | null {
   const leagues = listLeagues();
   return leagues.find(l => l.slug === slug) ?? null;
 }
+
+export function getLeagueBySlug(slug: string): League | null {
+  const leagues = listLeagues();
+  const found = leagues.find(function(l) { return l.slug === slug; });
+  return found || null;
+}
