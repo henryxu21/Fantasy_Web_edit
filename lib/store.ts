@@ -563,10 +563,4 @@ export function removePlayerFromTeam(teamId: string, playerId: string) {
   return { ok: true as const };
 }
 
-export function getLeagueBySlug(slug: string): League | null {
-  const leagues = listLeagues();
-  for (const l of leagues) {
-    if (l.slug === slug) return l;
-  }
-  return null;
-}
+

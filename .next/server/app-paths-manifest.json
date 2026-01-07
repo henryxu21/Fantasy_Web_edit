@@ -1,0 +1,22 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/auth/signup/page": "app/auth/signup/page.js",
+  "/cheat-sheet/page": "app/cheat-sheet/page.js",
+  "/draft-guide/page": "app/draft-guide/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/how-to-play/page": "app/how-to-play/page.js",
+  "/insights/[id]/page": "app/insights/[id]/page.js",
+  "/insights/new/page": "app/insights/new/page.js",
+  "/insights/page": "app/insights/page.js",
+  "/league/[slug]/page": "app/league/[slug]/page.js",
+  "/league/join/page": "app/league/join/page.js",
+  "/league/new/page": "app/league/new/page.js",
+  "/mock-draft/page": "app/mock-draft/page.js",
+  "/my-team/page": "app/my-team/page.js",
+  "/page": "app/page.js",
+  "/rankings/page": "app/rankings/page.js",
+  "/u/[username]/page": "app/u/[username]/page.js",
+  "/waiver-wire/page": "app/waiver-wire/page.js"
+}

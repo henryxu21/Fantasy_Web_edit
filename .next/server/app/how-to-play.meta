@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/how-to-play/layout,_N_T_/how-to-play/page,_N_T_/how-to-play"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/how-to-play/__PAGE__",
+    "/how-to-play",
+    "/_index",
+    "/_head"
+  ]
+}
