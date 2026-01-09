@@ -1632,3 +1632,55 @@ button {
   .filters-bar { flex-direction: column; }
   .filter-search { min-width: auto; }
 }
+
+/* Accent Button for Post */
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+.btn-accent:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+/* Post Button Floating (Mobile) */
+.fab-post {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+  z-index: 100;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.fab-post:hover {
+  transform: scale(1.1);
+}
+.fab-post svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Hide FAB on desktop where header button is visible */
+@media (min-width: 768px) {
+  .fab-post {
+    display: none;
+  }
+}
