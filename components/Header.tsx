@@ -19,6 +19,7 @@ export default function Header() {
   const navItems = [
     { href: "/", label: t("首页", "Home") },
     { href: "/rankings", label: t("球员排名", "Rankings") },
+    { href: "/compare", label: t("球员对比", "Compare") },
     { href: "/draft-guide", label: t("选秀指南", "Draft Guide") },
     { href: "/cheat-sheet", label: t("备忘单", "Cheat Sheet") },
     { href: "/how-to-play", label: t("新手入门", "How To Play") },
