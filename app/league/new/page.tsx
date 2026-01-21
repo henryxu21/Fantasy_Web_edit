@@ -37,7 +37,7 @@ export default function CreateLeaguePage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError(t("请输入联赛名称", "League name is required"));
@@ -47,7 +47,7 @@ export default function CreateLeaguePage() {
     setLoading(true);
     setError(null);
     
-    const res = createLeague({ name, visibility });
+    const res = await createLeague({ name, visibility });
     
     if (!res.ok) {
       setError(res.error || t("创建失败", "Failed to create league"));

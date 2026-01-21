@@ -37,52 +37,60 @@ export default function InsightDetailPage() {
   const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
-    const currentUser = getSessionUser();
-    setUser(currentUser);
-    
-    const raw = getInsightById(id);
-    if (raw) {
-      let content = raw.body;
-      let coverImage: string | undefined;
-      let images: string[] | undefined;
-      let tags: string[] | undefined;
+    const loadInsight = async () => {
+      const currentUser = getSessionUser();
+      setUser(currentUser);
       
-      try {
-        const parsed = JSON.parse(raw.body);
-        if (parsed.content) {
-          content = parsed.content;
-          coverImage = parsed.metadata?.coverImage;
-          images = parsed.metadata?.images;
-          tags = parsed.metadata?.tags;
-        }
-      } catch { }
+      const raw = await getInsightById(id);
+          
+      if (raw) {
+        let content = raw.body;
+        let coverImage: string | undefined;
+        let images: string[] | undefined;
+        let tags: string[] | undefined;
+        
+        try {
+          const parsed = JSON.parse(raw.body);
+          if (parsed.content) {
+            content = parsed.content;
+            coverImage = parsed.metadata?.coverImage;
+            images = parsed.metadata?.images;
+            tags = parsed.metadata?.tags;
+          }
+        } catch { }
 
-      setInsight({
-        id: raw.id,
-        title: raw.title,
-        content,
-        coverImage,
-        images,
-        tags,
-        author: raw.author,
-        createdAt: raw.createdAt,
-        heat: raw.heat,
-        leagueSlug: raw.leagueSlug,
-      });
-      setLikeCount(raw.heat);
-      setComments(listComments(raw.id));
-      
-      // Check if user liked
-      const likedPosts = JSON.parse(localStorage.getItem("bp_liked_posts") || "[]");
-      setLiked(likedPosts.includes(raw.id));
-      
-      // Check if following author
-      if (currentUser) {
-        const following = JSON.parse(localStorage.getItem(`bp_following_${currentUser.id}`) || "[]");
-        setIsFollowing(following.includes(raw.author));
+        const authorName = typeof raw.author === 'object' ? (raw.author as any)?.username || (raw.author as any)?.name : raw.author;
+        const createdAtNum = typeof raw.created_at === 'string' ? new Date(raw.created_at).getTime() : (raw.createdAt || Date.now());
+
+        setInsight({
+          id: raw.id,
+          title: raw.title,
+          content,
+          coverImage,
+          images,
+          tags,
+          author: authorName || 'Unknown',
+          createdAt: createdAtNum,
+          heat: raw.heat,
+          leagueSlug: raw.league_slug || raw.leagueSlug,
+        });
+        setLikeCount(raw.heat);
+        const commentsData = await listComments(raw.id);
+        setComments(commentsData);
+        
+        // Check if user liked
+        const likedPosts = JSON.parse(localStorage.getItem("bp_liked_posts") || "[]");
+        setLiked(likedPosts.includes(raw.id));
+        
+        // Check if following author
+        if (currentUser) {
+          const following = JSON.parse(localStorage.getItem(`bp_following_${currentUser.id}`) || "[]");
+          setIsFollowing(following.includes(authorName));
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    loadInsight();
   }, [id]);
 
   const isAuthor = user && insight && insight.author === user.name;
@@ -129,7 +137,7 @@ export default function InsightDetailPage() {
     }
   };
 
-  const handleComment = (e: React.FormEvent) => {
+  const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       alert(t("请先登录", "Please login first"));
@@ -137,7 +145,7 @@ export default function InsightDetailPage() {
     }
     if (!newComment.trim()) return;
 
-    const result = addComment(id, newComment.trim());
+    const result = await addComment(id, newComment.trim());
 
     if (result.ok && result.comment) {
       setComments([...comments, result.comment]);

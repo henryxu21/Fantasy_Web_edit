@@ -67,44 +67,50 @@ export default function LeagueDetailPage() {
   const [draftStatus, setDraftStatus] = useState<"not_started" | "in_progress" | "completed">("not_started");
 
   useEffect(() => {
-    const currentUser = getSessionUser();
-    setUser(currentUser);
-    const found = getLeagueBySlug(slug);
-    setLeague(found);
-    
-    if (found) {
-      // 加载聊天记录
-      const savedMessages = JSON.parse(localStorage.getItem(`bp_league_chat_${found.id}`) || "[]");
-      setMessages(savedMessages);
+    const loadLeague = async () => {
+      const currentUser = getSessionUser();
+      setUser(currentUser);
+      const found = await getLeagueBySlug(slug);
+      setLeague(found);
       
-      // 加载成员列表
-      const savedMembers = JSON.parse(localStorage.getItem(`bp_league_members_${found.id}`) || "[]");
-      
-      // 如果没有成员，添加创建者作为第一个成员
-      if (savedMembers.length === 0 && currentUser && found.ownerId === currentUser.id) {
-        const ownerMember: TeamMember = {
-          id: "m1",
-          userId: currentUser.id,
-          username: currentUser.username,
-          teamName: `${currentUser.name}'s Team`,
-          joinedAt: found.createdAt,
-          points: 0,
-          rank: 1,
-          wins: 0,
-          losses: 0,
-        };
-        savedMembers.push(ownerMember);
-        localStorage.setItem(`bp_league_members_${found.id}`, JSON.stringify(savedMembers));
+      if (found) {
+        // 加载聊天记录
+        const savedMessages = JSON.parse(localStorage.getItem(`bp_league_chat_${found.id}`) || "[]");
+        setMessages(savedMessages);
+        
+        // 加载成员列表
+        const savedMembers = JSON.parse(localStorage.getItem(`bp_league_members_${found.id}`) || "[]");
+        
+        const ownerId = (found as any).owner_id || (found as any).ownerId;
+        const createdAt = typeof (found as any).created_at === 'string' ? new Date((found as any).created_at).getTime() : (found as any).createdAt;
+        
+        // 如果没有成员，添加创建者作为第一个成员
+        if (savedMembers.length === 0 && currentUser && ownerId === currentUser.id) {
+          const ownerMember: TeamMember = {
+            id: "m1",
+            userId: currentUser.id,
+            username: currentUser.username,
+            teamName: `${currentUser.name}'s Team`,
+            joinedAt: createdAt,
+            points: 0,
+            rank: 1,
+            wins: 0,
+            losses: 0,
+          };
+          savedMembers.push(ownerMember);
+          localStorage.setItem(`bp_league_members_${found.id}`, JSON.stringify(savedMembers));
+        }
+        setMembers(savedMembers);
+        
+        // 加载选秀结果
+        const savedDraft = JSON.parse(localStorage.getItem(`bp_league_draft_${found.id}`) || "{}");
+        setDraftPicks(savedDraft.picks || []);
+        setDraftStatus(savedDraft.status || "not_started");
       }
-      setMembers(savedMembers);
       
-      // 加载选秀结果
-      const savedDraft = JSON.parse(localStorage.getItem(`bp_league_draft_${found.id}`) || "{}");
-      setDraftPicks(savedDraft.picks || []);
-      setDraftStatus(savedDraft.status || "not_started");
-    }
-    
-    setLoading(false);
+      setLoading(false);
+    };
+    loadLeague();
   }, [slug]);
 
   // 自动滚动到最新消息
@@ -112,7 +118,7 @@ export default function LeagueDetailPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const isOwner = user && league && league.ownerId === user.id;
+  const isOwner = user && league && ((league as any).owner_id === user.id || (league as any).ownerId === user.id);
   const isMember = user && members.some(m => m.userId === user.id);
 
   const handleDelete = () => {

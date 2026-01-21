@@ -13,10 +13,13 @@ export default function JoinLeaguePage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    setUser(getSessionUser());
-    // 获取所有公开联赛
-    const allLeagues = listLeagues().filter(l => l.visibility === "public");
-    setLeagues(allLeagues);
+    const loadData = async () => {
+      setUser(getSessionUser());
+      // 获取所有公开联赛
+      const allLeagues = await listLeagues();
+      setLeagues(allLeagues.filter((l: any) => l.visibility === "public"));
+    };
+    loadData();
   }, []);
 
   const filteredLeagues = leagues.filter(l => 

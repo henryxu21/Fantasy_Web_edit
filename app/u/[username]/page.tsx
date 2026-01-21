@@ -61,7 +61,7 @@ export default function UserProfilePage() {
     draftsCompleted: 0,
   });
 
-  const loadData = () => {
+  const loadData = async () => {
     const user = getSessionUser();
     setCurrentUser(user);
     
@@ -69,9 +69,10 @@ export default function UserProfilePage() {
     setIsOwnProfile(!!isOwn);
     
     // 加载帖子 - 匹配 username 或 name（兼容旧数据）
-    const allInsights = listInsights();
-    const filtered = allInsights.filter(i => {
-      const authorClean = i.author.replace("@", "").toLowerCase();
+    const allInsights = await listInsights();
+    const filtered = allInsights.filter((i: any) => {
+      const authorName = typeof i.author === 'object' ? i.author?.username : i.author;
+      const authorClean = (authorName || '').replace("@", "").toLowerCase();
       const usernameClean = username.toLowerCase();
       // 匹配 username 或者 name
       if (authorClean === usernameClean) return true;
@@ -79,13 +80,13 @@ export default function UserProfilePage() {
       if (isOwn && user && authorClean === user.name.toLowerCase()) return true;
       return false;
     });
-    setUserInsights(filtered.sort((a, b) => b.createdAt - a.createdAt));
+    setUserInsights(filtered.sort((a: any, b: any) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime()));
     
     // 加载联赛
-    const allLeagues = listLeagues();
+    const allLeagues = await listLeagues();
     let userOwnedLeagues: League[] = [];
     if (user && isOwn) {
-      userOwnedLeagues = allLeagues.filter(l => l.ownerId === user.id);
+      userOwnedLeagues = allLeagues.filter((l: any) => l.owner_id === user.id || l.ownerId === user.id);
       setUserLeagues(userOwnedLeagues);
     }
     
