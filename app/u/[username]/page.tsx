@@ -355,7 +355,7 @@ export default function UserProfilePage() {
                           <h3 className="league-name">{league.name}</h3>
                           <div className="league-meta">
                             <span className="league-visibility">{league.visibility === "public" ? t("公开", "Public") : t("私人", "Private")}</span>
-                            <span>{formatDate(league.createdAt)}</span>
+                            <span>{formatDate((league as any).created_at || (league as any).createdAt)}</span>
                           </div>
                         </div>
                       </Link>
