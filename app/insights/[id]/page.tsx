@@ -72,7 +72,7 @@ export default function InsightDetailPage() {
           author: authorName || 'Unknown',
           createdAt: createdAtNum,
           heat: raw.heat,
-          leagueSlug: raw.league_slug || raw.leagueSlug,
+          leagueSlug: (raw as any).league_slug || (raw as any).leagueSlug,
         });
         setLikeCount(raw.heat);
         const commentsData = await listComments(raw.id);
@@ -183,6 +183,22 @@ export default function InsightDetailPage() {
     if (days === 1) return t("昨天", "Yesterday");
     if (days < 7) return `${days} ${t("天前", "days ago")}`;
     return date.toLocaleDateString();
+  };
+
+  // Helper function to get comment author name
+  const getCommentAuthor = (comment: any): string => {
+    if (typeof comment.author === 'object') {
+      return comment.author?.username || comment.author?.name || 'Anonymous';
+    }
+    return comment.author || 'Anonymous';
+  };
+
+  // Helper function to get comment date
+  const getCommentDate = (comment: any): number => {
+    if (typeof comment.created_at === 'string') {
+      return new Date(comment.created_at).getTime();
+    }
+    return comment.createdAt || Date.now();
   };
 
   if (loading) {
@@ -372,18 +388,22 @@ export default function InsightDetailPage() {
                 <p>{t("暂无评论，来发表第一条评论吧！", "No comments yet. Be the first to comment!")}</p>
               </div>
             ) : (
-              comments.map(comment => (
-                <div key={comment.id} className="comment-item">
-                  <div className="comment-avatar">{comment.author[0]?.toUpperCase()}</div>
-                  <div className="comment-content">
-                    <div className="comment-header">
-                      <span className="comment-author">{comment.author}</span>
-                      <span className="comment-date">{formatDate(comment.createdAt)}</span>
+              comments.map(comment => {
+                const commentAuthor = getCommentAuthor(comment);
+                const commentDate = getCommentDate(comment);
+                return (
+                  <div key={comment.id} className="comment-item">
+                    <div className="comment-avatar">{(commentAuthor || '?')[0]?.toUpperCase()}</div>
+                    <div className="comment-content">
+                      <div className="comment-header">
+                        <span className="comment-author">{commentAuthor}</span>
+                        <span className="comment-date">{formatDate(commentDate)}</span>
+                      </div>
+                      <p className="comment-body">{comment.body}</p>
                     </div>
-                    <p className="comment-body">{comment.body}</p>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
