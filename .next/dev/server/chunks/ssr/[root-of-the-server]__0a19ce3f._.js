@@ -24,11 +24,11 @@ __turbopack_context__.s([
     "supabase",
     ()=>supabase
 ]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@supabase/supabase-js/dist/index.mjs [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/fantasy-web/node_modules/@supabase/supabase-js/dist/index.mjs [app-ssr] (ecmascript) <locals>");
 ;
 const supabaseUrl = ("TURBOPACK compile-time value", "https://yjdlllhntfxvgvjgdnsw.supabase.co");
 const supabaseAnonKey = ("TURBOPACK compile-time value", "sb_publishable_CU0R3BJg1YnxAYcLlwwNfw_NI6cHvnP");
-const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
+const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
 }),
 "[project]/fantasy-web/lib/players-data.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -7741,7 +7741,9 @@ __turbopack_context__.s([
     "updateDraft",
     ()=>updateDraft,
     "updatePlayerRanking",
-    ()=>updatePlayerRanking
+    ()=>updatePlayerRanking,
+    "uploadImage",
+    ()=>uploadImage
 ]);
 // lib/store.ts
 /* =========================================================
@@ -7869,6 +7871,34 @@ async function getUserByUsername(username) {
     if (error) return null;
     return data;
 }
+async function uploadImage(file, folder = "images") {
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    // 生成唯一文件名
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `${folder}/${user.id}_${Date.now()}.${ext}`;
+    // 上传到 Supabase Storage
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false
+    });
+    if (error) {
+        console.error("Upload error:", error);
+        return {
+            ok: false,
+            error: error.message
+        };
+    }
+    // 获取公开 URL
+    const { data: urlData } = __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").getPublicUrl(data.path);
+    return {
+        ok: true,
+        url: urlData.publicUrl
+    };
+}
 async function listInsights() {
     const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`*, author:users(id, name, username, avatar_url)`).order("created_at", {
         ascending: false
@@ -7894,6 +7924,8 @@ async function createInsight(input) {
         title: input.title.trim(),
         body: input.body.trim(),
         league_slug: input.league_slug,
+        cover_url: input.cover_url,
+        tags: input.tags,
         author_id: user.id,
         heat: Math.floor(80 + Math.random() * 200)
     }).select(`*, author:users(id, name, username, avatar_url)`).single();
@@ -8582,923 +8614,361 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$sto
 ;
 ;
 ;
-// 热门标签
-const TRENDING_TAGS = [
+const CATEGORIES = [
     {
-        tag: "选秀策略",
-        emoji: "🎯"
+        id: "all",
+        label: "推荐",
+        labelEn: "For You"
     },
     {
-        tag: "球员分析",
-        emoji: "📊"
+        id: "选秀策略",
+        label: "选秀策略",
+        labelEn: "Draft"
     },
     {
-        tag: "交易建议",
-        emoji: "🔄"
+        id: "球员分析",
+        label: "球员分析",
+        labelEn: "Analysis"
     },
     {
-        tag: "新手指南",
-        emoji: "📚"
+        id: "交易建议",
+        label: "交易建议",
+        labelEn: "Trade"
     },
     {
-        tag: "Punt策略",
-        emoji: "🎲"
+        id: "新手指南",
+        label: "新手指南",
+        labelEn: "Guide"
     },
     {
-        tag: "伤病更新",
-        emoji: "🏥"
-    },
-    {
-        tag: "每周推荐",
-        emoji: "⭐"
-    }
-];
-// 示例数据（当没有真实数据时显示）
-const SAMPLE_POSTS = [
-    {
-        id: "sample-1",
-        title: "2024-25 赛季首轮选秀策略深度分析",
-        body: "",
-        content: "详解如何在首轮做出最佳选择，避开常见陷阱...",
-        author_id: "",
-        author: {
-            id: "",
-            name: "Blueprint",
-            email: "",
-            username: "Blueprint"
-        },
-        created_at: new Date(Date.now() - 86400000).toISOString(),
-        heat: 328,
-        coverImage: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=300&fit=crop",
-        tags: [
-            "选秀策略",
-            "新手指南"
-        ]
-    },
-    {
-        id: "sample-2",
-        title: "Punt 助攻策略：如何构建顶级篮板阵容",
-        body: "",
-        content: "放弃助攻类别后，你可以专注于篮板和防守...",
-        author_id: "",
-        author: {
-            id: "",
-            name: "FantasyPro",
-            email: "",
-            username: "FantasyPro"
-        },
-        created_at: new Date(Date.now() - 172800000).toISOString(),
-        heat: 256,
-        coverImage: "https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?w=400&h=500&fit=crop",
-        tags: [
-            "Punt策略",
-            "球员分析"
-        ]
-    },
-    {
-        id: "sample-3",
-        title: "本周值得关注的 5 位潜力股",
-        body: "",
-        content: "这些球员可能在接下来几周大幅提升价值...",
-        author_id: "",
-        author: {
-            id: "",
-            name: "FantasyGuru",
-            email: "",
-            username: "FantasyGuru"
-        },
-        created_at: new Date(Date.now() - 259200000).toISOString(),
-        heat: 189,
-        coverImage: "https://images.unsplash.com/photo-1504450758481-7338bbe75c8e?w=400&h=350&fit=crop",
-        tags: [
-            "每周推荐",
-            "球员分析"
-        ]
-    },
-    {
-        id: "sample-4",
-        title: "新手必读：9-Cat 联赛入门完全指南",
-        body: "",
-        content: "从零开始了解 Fantasy 篮球的所有基础知识...",
-        author_id: "",
-        author: {
-            id: "",
-            name: "Rookie101",
-            email: "",
-            username: "Rookie101"
-        },
-        created_at: new Date(Date.now() - 345600000).toISOString(),
-        heat: 412,
-        coverImage: "https://images.unsplash.com/photo-1519861531473-9200262188bf?w=400&h=280&fit=crop",
-        tags: [
-            "新手指南"
-        ]
-    },
-    {
-        id: "sample-5",
-        title: "交易窗口期：哪些球员应该趁高卖出？",
-        body: "",
-        content: "分析当前市场，找出被高估的球员...",
-        author_id: "",
-        author: {
-            id: "",
-            name: "TradeKing",
-            email: "",
-            username: "TradeKing"
-        },
-        created_at: new Date(Date.now() - 432000000).toISOString(),
-        heat: 167,
-        coverImage: "https://images.unsplash.com/photo-1577471488278-16eec37ffcc2?w=400&h=450&fit=crop",
-        tags: [
-            "交易建议"
-        ]
-    },
-    {
-        id: "sample-6",
-        title: "伤病警报：关键球员复出时间表更新",
-        body: "",
-        content: "追踪重要球员的伤病恢复进度...",
-        author_id: "",
-        author: {
-            id: "",
-            name: "InjuryReport",
-            email: "",
-            username: "InjuryReport"
-        },
-        created_at: new Date(Date.now() - 518400000).toISOString(),
-        heat: 234,
-        coverImage: "https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=400&h=320&fit=crop",
-        tags: [
-            "伤病更新"
-        ]
+        id: "Punt策略",
+        label: "Punt策略",
+        labelEn: "Punt"
     }
 ];
 function HomePage() {
-    const { t } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$lang$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useLang"])();
-    const [activeTab, setActiveTab] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("insights");
+    const { t, lang } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$lang$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useLang"])();
     const [insights, setInsights] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
-    const [leagues, setLeagues] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
-    const [selectedTag, setSelectedTag] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [selectedCategory, setSelectedCategory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("all");
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
-    const [stats, setStats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({
-        insightsCount: 0,
-        leaguesCount: 0,
-        usersCount: 0
-    });
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         async function loadData() {
             try {
-                // 加载帖子（现在是异步的）
                 const rawInsights = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["listInsights"])();
-                const parsed = rawInsights.map((item)=>{
-                    let coverImage;
-                    let images;
-                    let tags;
-                    let content = item.body;
-                    try {
-                        const parsedBody = JSON.parse(item.body);
-                        if (parsedBody.content) {
-                            content = parsedBody.content;
-                            coverImage = parsedBody.metadata?.coverImage;
-                            images = parsedBody.metadata?.images;
-                            tags = parsedBody.metadata?.tags;
-                        }
-                    } catch  {}
-                    return {
+                const parsed = rawInsights.map((item)=>({
                         ...item,
-                        coverImage,
-                        images,
-                        tags,
-                        content
-                    };
-                });
-                // 如果没有真实帖子，使用示例数据
-                const finalInsights = parsed.length > 0 ? parsed : SAMPLE_POSTS;
-                setInsights(finalInsights.sort((a, b)=>new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-                // 加载联赛（现在是异步的）
-                const leaguesData = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["listLeagues"])();
-                setLeagues(leaguesData);
-                // 加载统计数据
-                const statsData = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getStats"])();
-                setStats(statsData);
-            } catch (error) {
-                console.error("Error loading data:", error);
-                // 出错时使用示例数据
-                setInsights(SAMPLE_POSTS);
+                        coverImage: item.cover_url,
+                        tags: item.tags,
+                        content: item.body
+                    }));
+                setInsights(parsed.sort((a, b)=>new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+            } catch (e) {
+                console.error(e);
             } finally{
                 setIsLoading(false);
             }
         }
         loadData();
     }, []);
-    const filteredInsights = selectedTag ? insights.filter((i)=>i.tags?.includes(selectedTag)) : insights;
-    const formatTime = (timestamp)=>{
-        const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
-        const diff = Date.now() - time;
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-        if (hours < 1) return t("刚刚", "Just now");
-        if (hours < 24) return `${hours}${t("小时前", "h ago")}`;
-        if (days < 7) return `${days}${t("天前", "d ago")}`;
-        return new Date(time).toLocaleDateString();
-    };
-    // 为瀑布流分配列
-    const getColumns = ()=>{
-        const left = [];
-        const right = [];
-        filteredInsights.forEach((item, index)=>{
-            if (index % 2 === 0) left.push(item);
-            else right.push(item);
-        });
-        return {
-            left,
-            right
-        };
-    };
-    const { left, right } = getColumns();
-    // 获取作者显示名称
+    const filteredInsights = selectedCategory === "all" ? insights : insights.filter((i)=>i.tags?.includes(selectedCategory));
     const getAuthorName = (item)=>{
-        if (item.author?.username) return `@${item.author.username}`;
+        if (item.author?.username) return item.author.username;
         if (item.author?.name) return item.author.name;
         return "Anonymous";
     };
-    const renderCard = (item, index)=>{
-        const hasImage = item.coverImage || item.images && item.images.length > 0;
-        const displayImage = item.coverImage || item.images?.[0];
-        const isSample = item.id.startsWith("sample-");
+    const formatLikes = (num)=>{
+        const n = Number(num || 0);
+        if (n >= 10000) return (n / 10000).toFixed(1) + "万";
+        if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+        return String(n);
+    };
+    const renderPostCard = (item)=>{
         const authorName = getAuthorName(item);
+        const hasImage = !!item.coverImage;
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-            href: isSample ? "#" : `/insights/${item.id}`,
-            className: "feed-card",
-            style: {
-                animationDelay: `${index * 0.05}s`
-            },
+            href: `/insights/${item.id}`,
+            className: "post-card",
             children: [
-                hasImage && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "card-image",
-                    children: [
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("img", {
-                            src: displayImage,
-                            alt: item.title,
-                            loading: "lazy"
-                        }, void 0, false, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 212,
-                            columnNumber: 13
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "image-overlay"
-                        }, void 0, false, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 213,
-                            columnNumber: 13
-                        }, this)
-                    ]
-                }, void 0, true, {
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "post-media",
+                    children: hasImage ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("img", {
+                        src: item.coverImage,
+                        alt: item.title || "post",
+                        loading: "lazy"
+                    }, void 0, false, {
+                        fileName: "[project]/fantasy-web/app/page.tsx",
+                        lineNumber: 83,
+                        columnNumber: 13
+                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "post-placeholder",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "ph-icon",
+                                children: "🏀"
+                            }, void 0, false, {
+                                fileName: "[project]/fantasy-web/app/page.tsx",
+                                lineNumber: 90,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "ph-title",
+                                children: (item.title || "Insight").slice(0, 16)
+                            }, void 0, false, {
+                                fileName: "[project]/fantasy-web/app/page.tsx",
+                                lineNumber: 91,
+                                columnNumber: 15
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/fantasy-web/app/page.tsx",
+                        lineNumber: 89,
+                        columnNumber: 13
+                    }, this)
+                }, void 0, false, {
                     fileName: "[project]/fantasy-web/app/page.tsx",
-                    lineNumber: 211,
-                    columnNumber: 11
+                    lineNumber: 81,
+                    columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "card-content",
+                    className: "post-footer",
                     children: [
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                            className: "card-title",
-                            children: item.title
-                        }, void 0, false, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 217,
-                            columnNumber: 11
-                        }, this),
-                        item.content && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                            className: "card-excerpt",
-                            children: [
-                                item.content.slice(0, 60),
-                                item.content.length > 60 ? "..." : ""
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 219,
-                            columnNumber: 13
-                        }, this),
-                        item.tags && item.tags.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "card-tags",
-                            children: item.tags.slice(0, 2).map((tag)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                    className: "card-tag",
-                                    children: [
-                                        "#",
-                                        tag
-                                    ]
-                                }, tag, true, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 226,
-                                    columnNumber: 17
-                                }, this))
-                        }, void 0, false, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 224,
-                            columnNumber: 13
-                        }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "card-footer",
+                            className: "user",
                             children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "card-author",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "author-avatar",
-                                            children: authorName[1]?.toUpperCase() || "?"
-                                        }, void 0, false, {
-                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                            lineNumber: 232,
-                                            columnNumber: 15
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                            className: "author-name",
-                                            children: authorName
-                                        }, void 0, false, {
-                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                            lineNumber: 233,
-                                            columnNumber: 15
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 231,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "card-stats",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                        className: "stat-item",
-                                        children: [
-                                            "❤️ ",
-                                            item.heat
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 236,
-                                        columnNumber: 15
-                                    }, this)
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "avatar",
+                                    children: authorName[0]?.toUpperCase()
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 235,
+                                    lineNumber: 99,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "name",
+                                    title: authorName,
+                                    children: authorName
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 100,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 230,
+                            lineNumber: 98,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "like",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "like-icon",
+                                    children: "❤️"
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 106,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "like-num",
+                                    children: formatLikes(item.heat)
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 107,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/fantasy-web/app/page.tsx",
+                            lineNumber: 105,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/fantasy-web/app/page.tsx",
-                    lineNumber: 216,
+                    lineNumber: 97,
                     columnNumber: 9
                 }, this)
             ]
         }, item.id, true, {
             fileName: "[project]/fantasy-web/app/page.tsx",
-            lineNumber: 204,
+            lineNumber: 79,
             columnNumber: 7
         }, this);
     };
     if (isLoading) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "app",
+            className: "jsx-121d5dafa954c2cb" + " " + "app",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$components$2f$Header$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                     fileName: "[project]/fantasy-web/app/page.tsx",
-                    lineNumber: 247,
+                    lineNumber: 117,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
-                    className: "home-page",
+                    className: "jsx-121d5dafa954c2cb" + " " + "feed-page",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        style: {
-                            textAlign: 'center',
-                            padding: '100px 20px'
-                        },
+                        className: "jsx-121d5dafa954c2cb" + " " + "loading",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                style: {
-                                    fontSize: '48px',
-                                    marginBottom: '16px'
-                                },
+                                className: "jsx-121d5dafa954c2cb" + " " + "loading-icon",
                                 children: "🏀"
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 250,
+                                lineNumber: 120,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                style: {
-                                    color: 'var(--text-muted)'
-                                },
+                                className: "jsx-121d5dafa954c2cb",
                                 children: t("加载中...", "Loading...")
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 251,
+                                lineNumber: 121,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/fantasy-web/app/page.tsx",
-                        lineNumber: 249,
+                        lineNumber: 119,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/fantasy-web/app/page.tsx",
-                    lineNumber: 248,
+                    lineNumber: 118,
                     columnNumber: 9
-                }, this)
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$styled$2d$jsx$2f$style$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                    id: "121d5dafa954c2cb",
+                    children: ".feed-page.jsx-121d5dafa954c2cb{background:var(--bg-primary);min-height:100vh}.loading.jsx-121d5dafa954c2cb{text-align:center;padding:120px 20px}.loading-icon.jsx-121d5dafa954c2cb{margin-bottom:16px;font-size:48px}.loading.jsx-121d5dafa954c2cb p.jsx-121d5dafa954c2cb{color:var(--text-muted)}"
+                }, void 0, false, void 0, this)
             ]
         }, void 0, true, {
             fileName: "[project]/fantasy-web/app/page.tsx",
-            lineNumber: 246,
+            lineNumber: 116,
             columnNumber: 7
         }, this);
     }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "jsx-1838e0c244f94645" + " " + "app",
+        className: "jsx-c0fa59e244be7c07" + " " + "app",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$components$2f$Header$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                 fileName: "[project]/fantasy-web/app/page.tsx",
-                lineNumber: 260,
+                lineNumber: 147,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
-                className: "jsx-1838e0c244f94645" + " " + "home-page",
+                className: "jsx-c0fa59e244be7c07" + " " + "feed-page",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                        className: "jsx-1838e0c244f94645" + " " + "hero-section",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "jsx-1838e0c244f94645" + " " + "hero-content",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                                        className: "jsx-1838e0c244f94645" + " " + "hero-title",
-                                        children: [
-                                            t("发现最佳", "Discover the Best"),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {
-                                                className: "jsx-1838e0c244f94645"
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 268,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "hero-highlight",
-                                                children: t("Fantasy 篮球策略", "Fantasy Basketball Strategies")
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 269,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 266,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "jsx-1838e0c244f94645" + " " + "hero-desc",
-                                        children: t("与数千玩家一起分享洞见、交流策略、赢得冠军", "Join thousands of players sharing insights, strategies, and winning championships")
-                                    }, void 0, false, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 271,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "jsx-1838e0c244f94645" + " " + "hero-actions",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                                                href: "/insights/new",
-                                                className: "btn btn-primary btn-lg",
-                                                children: [
-                                                    "✍️ ",
-                                                    t("分享洞见", "Share Insight")
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 275,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                                                href: "/league/new",
-                                                className: "btn btn-ghost btn-lg",
-                                                children: [
-                                                    "🏀 ",
-                                                    t("创建联赛", "Create League")
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 278,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 274,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 265,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "jsx-1838e0c244f94645" + " " + "hero-stats",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "jsx-1838e0c244f94645" + " " + "hero-stat",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "stat-number",
-                                                children: stats.insightsCount > 0 ? stats.insightsCount : insights.length
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 285,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "stat-label",
-                                                children: t("篇洞见", "Insights")
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 286,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 284,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "jsx-1838e0c244f94645" + " " + "hero-stat",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "stat-number",
-                                                children: stats.leaguesCount > 0 ? stats.leaguesCount : leagues.length
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 289,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "stat-label",
-                                                children: t("个联赛", "Leagues")
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 290,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 288,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "jsx-1838e0c244f94645" + " " + "hero-stat",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "stat-number",
-                                                children: stats.usersCount > 0 ? stats.usersCount : "0"
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 293,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "jsx-1838e0c244f94645" + " " + "stat-label",
-                                                children: t("位玩家", "Players")
-                                            }, void 0, false, {
-                                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                                lineNumber: 294,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 292,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 283,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/fantasy-web/app/page.tsx",
-                        lineNumber: 264,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                        className: "jsx-1838e0c244f94645" + " " + "tags-section",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "jsx-1838e0c244f94645" + " " + "tags-header",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                    className: "jsx-1838e0c244f94645" + " " + "tags-title",
-                                    children: [
-                                        "🔥 ",
-                                        t("热门话题", "Trending Topics")
-                                    ]
-                                }, void 0, true, {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
+                        className: "jsx-c0fa59e244be7c07" + " " + "category-nav",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "jsx-c0fa59e244be7c07" + " " + "category-scroll",
+                            children: CATEGORIES.map((cat)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    onClick: ()=>setSelectedCategory(cat.id),
+                                    className: "jsx-c0fa59e244be7c07" + " " + `category-tab ${selectedCategory === cat.id ? "active" : ""}`,
+                                    children: lang === "zh" ? cat.label : cat.labelEn
+                                }, cat.id, false, {
                                     fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 302,
-                                    columnNumber: 13
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 301,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "jsx-1838e0c244f94645" + " " + "tags-scroll",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        onClick: ()=>setSelectedTag(null),
-                                        className: "jsx-1838e0c244f94645" + " " + `tag-pill ${selectedTag === null ? "active" : ""}`,
-                                        children: t("全部", "All")
-                                    }, void 0, false, {
-                                        fileName: "[project]/fantasy-web/app/page.tsx",
-                                        lineNumber: 305,
-                                        columnNumber: 13
-                                    }, this),
-                                    TRENDING_TAGS.map(({ tag, emoji })=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                            onClick: ()=>setSelectedTag(selectedTag === tag ? null : tag),
-                                            className: "jsx-1838e0c244f94645" + " " + `tag-pill ${selectedTag === tag ? "active" : ""}`,
-                                            children: [
-                                                emoji,
-                                                " ",
-                                                tag
-                                            ]
-                                        }, tag, true, {
-                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                            lineNumber: 312,
-                                            columnNumber: 15
-                                        }, this))
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 304,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/fantasy-web/app/page.tsx",
-                        lineNumber: 300,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "jsx-1838e0c244f94645" + " " + "tab-nav",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                onClick: ()=>setActiveTab("insights"),
-                                className: "jsx-1838e0c244f94645" + " " + `tab-btn ${activeTab === "insights" ? "active" : ""}`,
-                                children: [
-                                    "💡 ",
-                                    t("洞见", "Insights")
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 325,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                onClick: ()=>setActiveTab("leagues"),
-                                className: "jsx-1838e0c244f94645" + " " + `tab-btn ${activeTab === "leagues" ? "active" : ""}`,
-                                children: [
-                                    "🏆 ",
-                                    t("联赛", "Leagues")
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/fantasy-web/app/page.tsx",
-                                lineNumber: 331,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/fantasy-web/app/page.tsx",
-                        lineNumber: 324,
-                        columnNumber: 9
-                    }, this),
-                    activeTab === "insights" ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                        className: "jsx-1838e0c244f94645" + " " + "feed-section",
-                        children: filteredInsights.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "jsx-1838e0c244f94645" + " " + "empty-feed",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "jsx-1838e0c244f94645" + " " + "empty-icon",
-                                    children: "📝"
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 344,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                    className: "jsx-1838e0c244f94645",
-                                    children: t("暂无相关内容", "No content found")
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 345,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "jsx-1838e0c244f94645",
-                                    children: t("成为第一个分享洞见的人！", "Be the first to share an insight!")
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 346,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                                    href: "/insights/new",
-                                    className: "btn btn-primary",
-                                    children: t("发布洞见", "Share Insight")
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 347,
-                                    columnNumber: 17
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 343,
-                            columnNumber: 15
-                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "jsx-1838e0c244f94645" + " " + "masonry-grid",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "jsx-1838e0c244f94645" + " " + "masonry-column",
-                                    children: left.map((item, index)=>renderCard(item, index * 2))
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 353,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "jsx-1838e0c244f94645" + " " + "masonry-column",
-                                    children: right.map((item, index)=>renderCard(item, index * 2 + 1))
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 356,
-                                    columnNumber: 17
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 352,
-                            columnNumber: 15
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/fantasy-web/app/page.tsx",
-                        lineNumber: 341,
-                        columnNumber: 11
-                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                        className: "jsx-1838e0c244f94645" + " " + "leagues-section",
-                        children: leagues.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "jsx-1838e0c244f94645" + " " + "empty-feed",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "jsx-1838e0c244f94645" + " " + "empty-icon",
-                                    children: "🏀"
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 366,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                    className: "jsx-1838e0c244f94645",
-                                    children: t("暂无联赛", "No leagues yet")
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 367,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "jsx-1838e0c244f94645",
-                                    children: t("创建你的第一个联赛！", "Create your first league!")
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 368,
-                                    columnNumber: 17
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                                    href: "/league/new",
-                                    className: "btn btn-primary",
-                                    children: t("创建联赛", "Create League")
-                                }, void 0, false, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 369,
-                                    columnNumber: 17
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 365,
-                            columnNumber: 15
-                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "jsx-1838e0c244f94645" + " " + "leagues-grid",
-                            children: leagues.map((league)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                                    href: `/league/${league.slug}`,
-                                    className: "league-card",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "jsx-1838e0c244f94645" + " " + "league-icon",
-                                            children: "🏀"
-                                        }, void 0, false, {
-                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                            lineNumber: 377,
-                                            columnNumber: 21
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "jsx-1838e0c244f94645" + " " + "league-info",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                                    className: "jsx-1838e0c244f94645" + " " + "league-name",
-                                                    children: league.name
-                                                }, void 0, false, {
-                                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                                    lineNumber: 379,
-                                                    columnNumber: 23
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    className: "jsx-1838e0c244f94645" + " " + "league-meta",
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                            className: "jsx-1838e0c244f94645" + " " + "league-badge",
-                                                            children: league.visibility === "public" ? t("公开", "Public") : t("私人", "Private")
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                                            lineNumber: 381,
-                                                            columnNumber: 25
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                            className: "jsx-1838e0c244f94645",
-                                                            children: formatTime(league.created_at)
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                                            lineNumber: 382,
-                                                            columnNumber: 25
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                                    lineNumber: 380,
-                                                    columnNumber: 23
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                            lineNumber: 378,
-                                            columnNumber: 21
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "jsx-1838e0c244f94645" + " " + "league-arrow",
-                                            children: "→"
-                                        }, void 0, false, {
-                                            fileName: "[project]/fantasy-web/app/page.tsx",
-                                            lineNumber: 385,
-                                            columnNumber: 21
-                                        }, this)
-                                    ]
-                                }, league.id, true, {
-                                    fileName: "[project]/fantasy-web/app/page.tsx",
-                                    lineNumber: 376,
-                                    columnNumber: 19
+                                    lineNumber: 154,
+                                    columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/fantasy-web/app/page.tsx",
-                            lineNumber: 374,
-                            columnNumber: 15
+                            lineNumber: 152,
+                            columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/fantasy-web/app/page.tsx",
-                        lineNumber: 363,
-                        columnNumber: 11
+                        lineNumber: 151,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "jsx-c0fa59e244be7c07" + " " + "feed-container",
+                        children: filteredInsights.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "jsx-c0fa59e244be7c07" + " " + "empty-state",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "jsx-c0fa59e244be7c07" + " " + "empty-icon",
+                                    children: "📝"
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 170,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                    className: "jsx-c0fa59e244be7c07",
+                                    children: t("还没有内容", "No posts yet")
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 171,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                    className: "jsx-c0fa59e244be7c07",
+                                    children: t("成为第一个发布洞见的人吧！", "Be the first to share!")
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 172,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                                    href: "/insights/new",
+                                    className: "empty-btn",
+                                    children: t("发布洞见", "Post Insight")
+                                }, void 0, false, {
+                                    fileName: "[project]/fantasy-web/app/page.tsx",
+                                    lineNumber: 173,
+                                    columnNumber: 15
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/fantasy-web/app/page.tsx",
+                            lineNumber: 169,
+                            columnNumber: 13
+                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "jsx-c0fa59e244be7c07" + " " + "grid",
+                            children: filteredInsights.map((item)=>renderPostCard(item))
+                        }, void 0, false, {
+                            fileName: "[project]/fantasy-web/app/page.tsx",
+                            lineNumber: 178,
+                            columnNumber: 13
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/fantasy-web/app/page.tsx",
+                        lineNumber: 167,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                        href: "/insights/new",
+                        className: "fab",
+                        "aria-label": "Post",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                            className: "jsx-c0fa59e244be7c07",
+                            children: "+"
+                        }, void 0, false, {
+                            fileName: "[project]/fantasy-web/app/page.tsx",
+                            lineNumber: 186,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/fantasy-web/app/page.tsx",
+                        lineNumber: 185,
+                        columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/fantasy-web/app/page.tsx",
-                lineNumber: 262,
+                lineNumber: 149,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$styled$2d$jsx$2f$style$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                id: "1838e0c244f94645",
-                children: ".home-page.jsx-1838e0c244f94645{max-width:1200px;margin:0 auto;padding:0 16px 60px}.hero-section.jsx-1838e0c244f94645{text-align:center;padding:48px 0}.hero-title.jsx-1838e0c244f94645{margin-bottom:16px;font-size:36px;font-weight:800;line-height:1.2}.hero-highlight.jsx-1838e0c244f94645{-webkit-text-fill-color:transparent;background:linear-gradient(135deg,#f59e0b,#f97316);-webkit-background-clip:text;background-clip:text}.hero-desc.jsx-1838e0c244f94645{color:var(--text-muted);max-width:500px;margin:0 auto 24px;font-size:16px}.hero-actions.jsx-1838e0c244f94645{flex-wrap:wrap;justify-content:center;gap:12px;display:flex}.btn-lg.jsx-1838e0c244f94645{padding:14px 28px;font-size:16px}.hero-stats.jsx-1838e0c244f94645{border-top:1px solid var(--border-color);justify-content:center;gap:48px;margin-top:48px;padding-top:32px;display:flex}.hero-stat.jsx-1838e0c244f94645{text-align:center}.stat-number.jsx-1838e0c244f94645{color:var(--accent);font-size:32px;font-weight:700;display:block}.stat-label.jsx-1838e0c244f94645{color:var(--text-muted);font-size:14px}.tags-section.jsx-1838e0c244f94645{margin-bottom:24px}.tags-title.jsx-1838e0c244f94645{margin-bottom:12px;font-size:16px;font-weight:600}.tags-scroll.jsx-1838e0c244f94645{-webkit-overflow-scrolling:touch;gap:8px;padding-bottom:8px;display:flex;overflow-x:auto}.tags-scroll.jsx-1838e0c244f94645::-webkit-scrollbar{display:none}.tag-pill.jsx-1838e0c244f94645{background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-secondary);cursor:pointer;white-space:nowrap;border-radius:20px;flex-shrink:0;padding:8px 16px;font-size:14px;transition:all .2s}.tag-pill.jsx-1838e0c244f94645:hover{border-color:var(--accent);color:var(--accent)}.tag-pill.active.jsx-1838e0c244f94645{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600}.tab-nav.jsx-1838e0c244f94645{border-bottom:1px solid var(--border-color);gap:8px;margin-bottom:24px;padding-bottom:12px;display:flex}.tab-btn.jsx-1838e0c244f94645{color:var(--text-muted);cursor:pointer;background:0 0;border:none;border-radius:20px;padding:10px 20px;font-size:15px;font-weight:500;transition:all .2s}.tab-btn.jsx-1838e0c244f94645:hover{color:var(--text-primary)}.tab-btn.active.jsx-1838e0c244f94645{background:var(--accent);color:#000;font-weight:600}.masonry-grid.jsx-1838e0c244f94645{gap:16px;display:flex}.masonry-column.jsx-1838e0c244f94645{flex-direction:column;flex:1;gap:16px;display:flex}.feed-card.jsx-1838e0c244f94645{background:var(--bg-card);color:inherit;border:1px solid var(--border-color);opacity:0;border-radius:16px;text-decoration:none;transition:all .3s;animation:.5s forwards fadeInUp;display:block;overflow:hidden}@keyframes fadeInUp{0%{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}.feed-card.jsx-1838e0c244f94645:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 20px 40px #0000004d}.card-image.jsx-1838e0c244f94645{width:100%;position:relative;overflow:hidden}.card-image.jsx-1838e0c244f94645 img.jsx-1838e0c244f94645{width:100%;height:auto;transition:transform .3s;display:block}.feed-card.jsx-1838e0c244f94645:hover .card-image.jsx-1838e0c244f94645 img.jsx-1838e0c244f94645{transform:scale(1.05)}.image-overlay.jsx-1838e0c244f94645{background:linear-gradient(#0000,#0000004d);height:60px;position:absolute;bottom:0;left:0;right:0}.card-content.jsx-1838e0c244f94645{padding:16px}.card-title.jsx-1838e0c244f94645{-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:8px;font-size:15px;font-weight:600;line-height:1.4;display:-webkit-box;overflow:hidden}.card-excerpt.jsx-1838e0c244f94645{color:var(--text-muted);-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:12px;font-size:13px;line-height:1.5;display:-webkit-box;overflow:hidden}.card-tags.jsx-1838e0c244f94645{flex-wrap:wrap;gap:6px;margin-bottom:12px;display:flex}.card-tag.jsx-1838e0c244f94645{color:var(--accent);background:#f59e0b1a;border-radius:10px;padding:2px 8px;font-size:12px}.card-footer.jsx-1838e0c244f94645{justify-content:space-between;align-items:center;display:flex}.card-author.jsx-1838e0c244f94645{align-items:center;gap:8px;display:flex}.author-avatar.jsx-1838e0c244f94645{color:#000;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:50%;justify-content:center;align-items:center;width:24px;height:24px;font-size:11px;font-weight:600;display:flex}.author-name.jsx-1838e0c244f94645,.card-stats.jsx-1838e0c244f94645{color:var(--text-muted);font-size:12px}.empty-feed.jsx-1838e0c244f94645{text-align:center;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:80px 20px}.empty-icon.jsx-1838e0c244f94645{margin-bottom:16px;font-size:64px}.empty-feed.jsx-1838e0c244f94645 h3.jsx-1838e0c244f94645{margin-bottom:8px;font-size:20px}.empty-feed.jsx-1838e0c244f94645 p.jsx-1838e0c244f94645{color:var(--text-muted);margin-bottom:24px}.leagues-grid.jsx-1838e0c244f94645{flex-direction:column;gap:12px;display:flex}.league-card.jsx-1838e0c244f94645{background:var(--bg-card);border:1px solid var(--border-color);color:inherit;border-radius:16px;align-items:center;gap:16px;padding:20px;text-decoration:none;transition:all .2s;display:flex}.league-card.jsx-1838e0c244f94645:hover{border-color:var(--accent);transform:translate(4px)}.league-icon.jsx-1838e0c244f94645{background:var(--bg-secondary);border-radius:12px;justify-content:center;align-items:center;width:48px;height:48px;font-size:24px;display:flex}.league-info.jsx-1838e0c244f94645{flex:1}.league-name.jsx-1838e0c244f94645{margin-bottom:4px;font-size:16px;font-weight:600}.league-meta.jsx-1838e0c244f94645{color:var(--text-muted);gap:12px;font-size:13px;display:flex}.league-badge.jsx-1838e0c244f94645{color:var(--accent)}.league-arrow.jsx-1838e0c244f94645{color:var(--text-muted);font-size:20px}@media (width<=640px){.hero-title.jsx-1838e0c244f94645{font-size:28px}.hero-stats.jsx-1838e0c244f94645{gap:24px}.stat-number.jsx-1838e0c244f94645{font-size:24px}.masonry-grid.jsx-1838e0c244f94645{gap:12px}}"
+                id: "c0fa59e244be7c07",
+                children: ".feed-page.jsx-c0fa59e244be7c07{background:var(--bg-primary);min-height:100vh}.category-nav.jsx-c0fa59e244be7c07{z-index:50;background:var(--bg-primary);border-bottom:1px solid var(--border-color);position:sticky;top:60px}.category-scroll.jsx-c0fa59e244be7c07{scrollbar-width:none;gap:6px;max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;overflow-x:auto}.category-scroll.jsx-c0fa59e244be7c07::-webkit-scrollbar{display:none}.category-tab.jsx-c0fa59e244be7c07{color:var(--text-muted);cursor:pointer;white-space:nowrap;background:0 0;border:none;border-radius:999px;padding:8px 18px;font-size:14px;font-weight:600;transition:all .2s}.category-tab.jsx-c0fa59e244be7c07:hover{background:var(--bg-secondary);color:var(--text-primary)}.category-tab.active.jsx-c0fa59e244be7c07{background:var(--accent);color:#000}.feed-container.jsx-c0fa59e244be7c07{max-width:1200px;margin:0 auto;padding:18px 16px 110px}.grid.jsx-c0fa59e244be7c07{grid-template-columns:repeat(4,minmax(0,1fr));align-items:start;gap:18px;display:grid}.post-card.jsx-c0fa59e244be7c07{background:var(--bg-card);border:1px solid var(--border-color);color:inherit;border-radius:14px;text-decoration:none;transition:transform .15s,box-shadow .15s,border-color .15s;display:block;overflow:hidden}.post-card.jsx-c0fa59e244be7c07:hover{border-color:#f59e0bb3;transform:translateY(-3px);box-shadow:0 12px 28px #00000059}.post-media.jsx-c0fa59e244be7c07{aspect-ratio:4/5;background:#ffffff08;width:100%;overflow:hidden}.post-media.jsx-c0fa59e244be7c07 img.jsx-c0fa59e244be7c07{object-fit:cover;width:100%;height:100%;display:block}.post-placeholder.jsx-c0fa59e244be7c07{text-align:center;background:radial-gradient(900px 400px at 10% 10%,#f59e0b2e,#0000 60%),#ffffff05;flex-direction:column;justify-content:center;align-items:center;gap:10px;width:100%;height:100%;padding:14px;display:flex}.ph-icon.jsx-c0fa59e244be7c07{opacity:.9;font-size:34px}.ph-title.jsx-c0fa59e244be7c07{color:var(--text-muted);-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;line-height:1.3;display:-webkit-box;overflow:hidden}.post-footer.jsx-c0fa59e244be7c07{justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;display:flex}.user.jsx-c0fa59e244be7c07{align-items:center;gap:8px;min-width:0;display:flex}.avatar.jsx-c0fa59e244be7c07{color:#000;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:999px;flex-shrink:0;justify-content:center;align-items:center;width:22px;height:22px;font-size:11px;font-weight:800;display:inline-flex}.name.jsx-c0fa59e244be7c07{color:var(--text-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;overflow:hidden}.like.jsx-c0fa59e244be7c07{color:var(--text-muted);flex-shrink:0;align-items:center;gap:4px;font-size:13px;font-weight:600;display:flex}.empty-state.jsx-c0fa59e244be7c07{text-align:center;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:80px 20px}.empty-icon.jsx-c0fa59e244be7c07{margin-bottom:16px;font-size:56px}.empty-state.jsx-c0fa59e244be7c07 h3.jsx-c0fa59e244be7c07{color:var(--text-primary);margin-bottom:8px;font-size:18px}.empty-state.jsx-c0fa59e244be7c07 p.jsx-c0fa59e244be7c07{color:var(--text-muted);margin-bottom:20px}.empty-btn.jsx-c0fa59e244be7c07{background:var(--accent);color:#000;border-radius:999px;padding:12px 28px;font-weight:700;text-decoration:none;transition:transform .2s;display:inline-block}.empty-btn.jsx-c0fa59e244be7c07:hover{transform:scale(1.05)}.fab.jsx-c0fa59e244be7c07{color:#000;z-index:100;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:50%;justify-content:center;align-items:center;width:56px;height:56px;font-size:32px;font-weight:300;text-decoration:none;transition:all .2s;display:flex;position:fixed;bottom:28px;right:28px;box-shadow:0 4px 20px #f59e0b66}.fab.jsx-c0fa59e244be7c07:hover{transform:scale(1.1);box-shadow:0 6px 28px #f59e0b80}@media (width<=1100px){.grid.jsx-c0fa59e244be7c07{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (width<=860px){.grid.jsx-c0fa59e244be7c07{grid-template-columns:repeat(2,minmax(0,1fr))}}"
             }, void 0, false, void 0, this)
         ]
     }, void 0, true, {
         fileName: "[project]/fantasy-web/app/page.tsx",
-        lineNumber: 259,
+        lineNumber: 146,
         columnNumber: 5
     }, this);
 }

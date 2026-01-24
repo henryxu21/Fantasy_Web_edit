@@ -7,11 +7,11 @@ __turbopack_context__.s([
     ()=>supabase
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/fantasy-web/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@supabase/supabase-js/dist/index.mjs [app-client] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/fantasy-web/node_modules/@supabase/supabase-js/dist/index.mjs [app-client] (ecmascript) <locals>");
 ;
 const supabaseUrl = ("TURBOPACK compile-time value", "https://yjdlllhntfxvgvjgdnsw.supabase.co");
 const supabaseAnonKey = ("TURBOPACK compile-time value", "sb_publishable_CU0R3BJg1YnxAYcLlwwNfw_NI6cHvnP");
-const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
+const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
@@ -7671,14 +7671,30 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 __turbopack_context__.s([
     "addComment",
     ()=>addComment,
+    "addDraftPick",
+    ()=>addDraftPick,
+    "addPlayerToTeam",
+    ()=>addPlayerToTeam,
+    "addToWatchlist",
+    ()=>addToWatchlist,
+    "createDraft",
+    ()=>createDraft,
     "createInsight",
     ()=>createInsight,
     "createLeague",
     ()=>createLeague,
+    "createMyTeam",
+    ()=>createMyTeam,
+    "getDraftById",
+    ()=>getDraftById,
+    "getDraftPicks",
+    ()=>getDraftPicks,
     "getInsightById",
     ()=>getInsightById,
     "getLeagueBySlug",
     ()=>getLeagueBySlug,
+    "getMyTeams",
+    ()=>getMyTeams,
     "getPlayerById",
     ()=>getPlayerById,
     "getPlayers",
@@ -7691,8 +7707,12 @@ __turbopack_context__.s([
     ()=>getUserById,
     "getUserByUsername",
     ()=>getUserByUsername,
+    "getWatchlist",
+    ()=>getWatchlist,
     "listComments",
     ()=>listComments,
+    "listDrafts",
+    ()=>listDrafts,
     "listInsights",
     ()=>listInsights,
     "listLeagues",
@@ -7701,17 +7721,64 @@ __turbopack_context__.s([
     ()=>login,
     "logout",
     ()=>logout,
+    "removeFromWatchlist",
+    ()=>removeFromWatchlist,
+    "removePlayerFromTeam",
+    ()=>removePlayerFromTeam,
     "signup",
-    ()=>signup
+    ()=>signup,
+    "updateDraft",
+    ()=>updateDraft,
+    "updatePlayerRanking",
+    ()=>updatePlayerRanking,
+    "uploadImage",
+    ()=>uploadImage
 ]);
 // lib/store.ts
 /* =========================================================
-   Blueprint Fantasy — Domain Store with Supabase
+   Blueprint Fantasy — Merged Store
+   - Users, Insights, Leagues, Comments → Supabase
+   - Drafts, Watchlist, MyTeams, Players → localStorage
    ========================================================= */ var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/fantasy-web/lib/supabase.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$players$2d$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/fantasy-web/lib/players-data.ts [app-client] (ecmascript)");
 ;
 ;
-// ==================== Session (localStorage for current user) ====================
+// ==================== LocalStorage Keys ====================
+const KEYS = {
+    users: "bp_users",
+    session: "bp_session",
+    drafts: "bp_drafts",
+    draftPicks: "bp_draft_picks",
+    draftTeams: "bp_draft_teams",
+    myTeams: "bp_my_teams",
+    watchlist: "bp_watchlist",
+    playerRankings: "bp_player_rankings"
+};
+// ==================== Utils ====================
+function safeParse(raw, fallback) {
+    if (!raw) return fallback;
+    try {
+        return JSON.parse(raw);
+    } catch  {
+        return fallback;
+    }
+}
+function uid(prefix = "id") {
+    return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
+function canUseStorage() {
+    try {
+        if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+        ;
+        const test = "__storage_test__";
+        window.localStorage.setItem(test, test);
+        window.localStorage.removeItem(test);
+        return true;
+    } catch  {
+        return false;
+    }
+}
+// ==================== Session (localStorage) ====================
 const SESSION_KEY = "bp_session";
 function getSessionUser() {
     if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
@@ -7735,7 +7802,6 @@ function logout() {
     localStorage.removeItem(SESSION_KEY);
 }
 async function signup(name, email, password) {
-    // Check if email already exists
     const { data: existingUser } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("users").select("id").eq("email", email).single();
     if (existingUser) {
         return {
@@ -7743,7 +7809,6 @@ async function signup(name, email, password) {
             error: "Email already exists"
         };
     }
-    // Create user in our users table
     const username = email.split("@")[0];
     const { data: newUser, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("users").insert({
         name,
@@ -7756,7 +7821,7 @@ async function signup(name, email, password) {
             error: error.message
         };
     }
-    // Store password hash in localStorage (简化版，生产环境应该用 Supabase Auth)
+    // Store password in localStorage (simplified, use Supabase Auth in production)
     const users = JSON.parse(localStorage.getItem("bp_users") || "[]");
     users.push({
         id: newUser.id,
@@ -7771,7 +7836,6 @@ async function signup(name, email, password) {
     };
 }
 async function login(email, password) {
-    // Check password from localStorage
     const users = JSON.parse(localStorage.getItem("bp_users") || "[]");
     const storedUser = users.find((u)=>u.email === email);
     if (!storedUser || storedUser.password !== password) {
@@ -7780,7 +7844,6 @@ async function login(email, password) {
             error: "Invalid credentials"
         };
     }
-    // Get full user data from Supabase
     const { data: user, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("users").select("*").eq("email", email).single();
     if (error || !user) {
         return {
@@ -7804,11 +7867,36 @@ async function getUserByUsername(username) {
     if (error) return null;
     return data;
 }
+async function uploadImage(file, folder = "images") {
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    // 生成唯一文件名
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `${folder}/${user.id}_${Date.now()}.${ext}`;
+    // 上传到 Supabase Storage
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false
+    });
+    if (error) {
+        console.error("Upload error:", error);
+        return {
+            ok: false,
+            error: error.message
+        };
+    }
+    // 获取公开 URL
+    const { data: urlData } = __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").getPublicUrl(data.path);
+    return {
+        ok: true,
+        url: urlData.publicUrl
+    };
+}
 async function listInsights() {
-    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`
-      *,
-      author:users(id, name, username, avatar_url)
-    `).order("created_at", {
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`*, author:users(id, name, username, avatar_url)`).order("created_at", {
         ascending: false
     });
     if (error) {
@@ -7818,10 +7906,7 @@ async function listInsights() {
     return data || [];
 }
 async function getInsightById(id) {
-    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`
-      *,
-      author:users(id, name, username, avatar_url)
-    `).eq("id", id).single();
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`*, author:users(id, name, username, avatar_url)`).eq("id", id).single();
     if (error) return null;
     return data;
 }
@@ -7835,12 +7920,11 @@ async function createInsight(input) {
         title: input.title.trim(),
         body: input.body.trim(),
         league_slug: input.league_slug,
+        cover_url: input.cover_url,
+        tags: input.tags,
         author_id: user.id,
         heat: Math.floor(80 + Math.random() * 200)
-    }).select(`
-      *,
-      author:users(id, name, username, avatar_url)
-    `).single();
+    }).select(`*, author:users(id, name, username, avatar_url)`).single();
     if (error) {
         return {
             ok: false,
@@ -7853,10 +7937,7 @@ async function createInsight(input) {
     };
 }
 async function listComments(insightId) {
-    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("comments").select(`
-      *,
-      author:users(id, name, username, avatar_url)
-    `).eq("insight_id", insightId).order("created_at", {
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].from("comments").select(`*, author:users(id, name, username, avatar_url)`).eq("insight_id", insightId).order("created_at", {
         ascending: true
     });
     if (error) return [];
@@ -7872,10 +7953,7 @@ async function addComment(insightId, body) {
         insight_id: insightId,
         author_id: user.id,
         body: body.trim()
-    }).select(`
-      *,
-      author:users(id, name, username, avatar_url)
-    `).single();
+    }).select(`*, author:users(id, name, username, avatar_url)`).single();
     if (error) {
         return {
             ok: false,
@@ -7944,13 +8022,236 @@ async function getStats() {
         usersCount: usersRes.count || 0
     };
 }
-// ==================== Players (still local) ====================
+// ==================== Players (localStorage) ====================
 const DEFAULT_PLAYERS = __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$players$2d$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ALL_PLAYERS"];
 function getPlayers() {
+    if (!canUseStorage()) return DEFAULT_PLAYERS;
+    const custom = safeParse(localStorage.getItem(KEYS.playerRankings), []);
+    if (custom.length > 0) return custom;
     return DEFAULT_PLAYERS;
 }
 function getPlayerById(id) {
-    return DEFAULT_PLAYERS.find((p)=>p.id === id);
+    return getPlayers().find((p)=>p.id === id);
+}
+function updatePlayerRanking(playerId, newRank) {
+    if (!canUseStorage()) return {
+        ok: false
+    };
+    const players = getPlayers();
+    const idx = players.findIndex((p)=>p.id === playerId);
+    if (idx === -1) return {
+        ok: false
+    };
+    players[idx].rank = newRank;
+    players.sort((a, b)=>a.rank - b.rank);
+    localStorage.setItem(KEYS.playerRankings, JSON.stringify(players));
+    return {
+        ok: true
+    };
+}
+function getWatchlist() {
+    if (!canUseStorage()) return [];
+    const user = getSessionUser();
+    if (!user) return [];
+    const all = safeParse(localStorage.getItem(KEYS.watchlist), []);
+    return all.filter((w)=>w.userId === user.id);
+}
+function addToWatchlist(playerId, notes) {
+    if (!canUseStorage()) return {
+        ok: false,
+        error: "Storage unavailable"
+    };
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    const all = safeParse(localStorage.getItem(KEYS.watchlist), []);
+    if (all.some((w)=>w.playerId === playerId && w.userId === user.id)) {
+        return {
+            ok: false,
+            error: "Already in watchlist"
+        };
+    }
+    all.push({
+        playerId,
+        userId: user.id,
+        addedAt: Date.now(),
+        notes
+    });
+    localStorage.setItem(KEYS.watchlist, JSON.stringify(all));
+    return {
+        ok: true
+    };
+}
+function removeFromWatchlist(playerId) {
+    if (!canUseStorage()) return {
+        ok: false
+    };
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false
+    };
+    let all = safeParse(localStorage.getItem(KEYS.watchlist), []);
+    all = all.filter((w)=>!(w.playerId === playerId && w.userId === user.id));
+    localStorage.setItem(KEYS.watchlist, JSON.stringify(all));
+    return {
+        ok: true
+    };
+}
+function listDrafts() {
+    if (!canUseStorage()) return [];
+    const user = getSessionUser();
+    if (!user) return [];
+    const all = safeParse(localStorage.getItem(KEYS.drafts), []);
+    return all.filter((d)=>d.userId === user.id);
+}
+function getDraftById(id) {
+    if (!canUseStorage()) return null;
+    const all = safeParse(localStorage.getItem(KEYS.drafts), []);
+    return all.find((d)=>d.id === id) ?? null;
+}
+function createDraft(input) {
+    if (!canUseStorage()) return {
+        ok: false,
+        error: "Storage unavailable"
+    };
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    const draft = {
+        id: uid("draft"),
+        name: input.name,
+        userId: user.id,
+        leagueId: input.leagueId,
+        type: input.type,
+        teams: input.teams,
+        rounds: input.rounds,
+        userPosition: input.userPosition,
+        status: "active",
+        currentRound: 1,
+        currentPick: 1,
+        createdAt: Date.now()
+    };
+    const all = safeParse(localStorage.getItem(KEYS.drafts), []);
+    all.push(draft);
+    localStorage.setItem(KEYS.drafts, JSON.stringify(all));
+    return {
+        ok: true,
+        draft
+    };
+}
+function updateDraft(id, updates) {
+    if (!canUseStorage()) return {
+        ok: false
+    };
+    const all = safeParse(localStorage.getItem(KEYS.drafts), []);
+    const idx = all.findIndex((d)=>d.id === id);
+    if (idx === -1) return {
+        ok: false
+    };
+    all[idx] = {
+        ...all[idx],
+        ...updates
+    };
+    localStorage.setItem(KEYS.drafts, JSON.stringify(all));
+    return {
+        ok: true,
+        draft: all[idx]
+    };
+}
+function getDraftPicks(draftId) {
+    if (!canUseStorage()) return [];
+    const all = safeParse(localStorage.getItem(KEYS.draftPicks), []);
+    return all.filter((p)=>p.odraftId === draftId);
+}
+function addDraftPick(draftId, playerId, teamId, round, pick) {
+    if (!canUseStorage()) return {
+        ok: false
+    };
+    const draftPick = {
+        id: uid("pick"),
+        odraftId: draftId,
+        playerId,
+        teamId,
+        round,
+        pick,
+        timestamp: Date.now()
+    };
+    const all = safeParse(localStorage.getItem(KEYS.draftPicks), []);
+    all.push(draftPick);
+    localStorage.setItem(KEYS.draftPicks, JSON.stringify(all));
+    return {
+        ok: true,
+        pick: draftPick
+    };
+}
+function getMyTeams() {
+    if (!canUseStorage()) return [];
+    const user = getSessionUser();
+    if (!user) return [];
+    const all = safeParse(localStorage.getItem(KEYS.myTeams), []);
+    return all.filter((t)=>t.userId === user.id);
+}
+function createMyTeam(leagueId, name) {
+    if (!canUseStorage()) return {
+        ok: false,
+        error: "Storage unavailable"
+    };
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    const team = {
+        id: uid("team"),
+        leagueId,
+        userId: user.id,
+        name,
+        players: [],
+        createdAt: Date.now()
+    };
+    const all = safeParse(localStorage.getItem(KEYS.myTeams), []);
+    all.push(team);
+    localStorage.setItem(KEYS.myTeams, JSON.stringify(all));
+    return {
+        ok: true,
+        team
+    };
+}
+function addPlayerToTeam(teamId, playerId) {
+    if (!canUseStorage()) return {
+        ok: false
+    };
+    const all = safeParse(localStorage.getItem(KEYS.myTeams), []);
+    const idx = all.findIndex((t)=>t.id === teamId);
+    if (idx === -1) return {
+        ok: false
+    };
+    if (!all[idx].players.includes(playerId)) {
+        all[idx].players.push(playerId);
+        localStorage.setItem(KEYS.myTeams, JSON.stringify(all));
+    }
+    return {
+        ok: true
+    };
+}
+function removePlayerFromTeam(teamId, playerId) {
+    if (!canUseStorage()) return {
+        ok: false
+    };
+    const all = safeParse(localStorage.getItem(KEYS.myTeams), []);
+    const idx = all.findIndex((t)=>t.id === teamId);
+    if (idx === -1) return {
+        ok: false
+    };
+    all[idx].players = all[idx].players.filter((p)=>p !== playerId);
+    localStorage.setItem(KEYS.myTeams, JSON.stringify(all));
+    return {
+        ok: true
+    };
 }
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
@@ -8411,15 +8712,16 @@ function UserProfilePage() {
         leaguesWon: 0,
         draftsCompleted: 0
     });
-    const loadData = ()=>{
+    const loadData = async ()=>{
         const user = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getSessionUser"])();
         setCurrentUser(user);
         const isOwn = user && user.username.toLowerCase() === username.toLowerCase();
         setIsOwnProfile(!!isOwn);
         // 加载帖子 - 匹配 username 或 name（兼容旧数据）
-        const allInsights = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["listInsights"])();
+        const allInsights = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["listInsights"])();
         const filtered = allInsights.filter((i)=>{
-            const authorClean = i.author.replace("@", "").toLowerCase();
+            const authorName = typeof i.author === 'object' ? i.author?.username : i.author;
+            const authorClean = (authorName || '').replace("@", "").toLowerCase();
             const usernameClean = username.toLowerCase();
             // 匹配 username 或者 name
             if (authorClean === usernameClean) return true;
@@ -8427,12 +8729,12 @@ function UserProfilePage() {
             if (isOwn && user && authorClean === user.name.toLowerCase()) return true;
             return false;
         });
-        setUserInsights(filtered.sort((a, b)=>b.createdAt - a.createdAt));
+        setUserInsights(filtered.sort((a, b)=>new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime()));
         // 加载联赛
-        const allLeagues = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["listLeagues"])();
+        const allLeagues = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["listLeagues"])();
         let userOwnedLeagues = [];
         if (user && isOwn) {
-            userOwnedLeagues = allLeagues.filter((l)=>l.ownerId === user.id);
+            userOwnedLeagues = allLeagues.filter((l)=>l.owner_id === user.id || l.ownerId === user.id);
             setUserLeagues(userOwnedLeagues);
         }
         // 计算真实统计数据
@@ -8553,7 +8855,7 @@ function UserProfilePage() {
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$components$2f$Header$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                lineNumber: 216,
+                lineNumber: 217,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -8573,7 +8875,7 @@ function UserProfilePage() {
                                                 children: username[0]?.toUpperCase()
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 223,
+                                                lineNumber: 224,
                                                 columnNumber: 15
                                             }, this),
                                             userBadges.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8584,13 +8886,13 @@ function UserProfilePage() {
                                                 children: userBadges[0].icon
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 225,
+                                                lineNumber: 226,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 222,
+                                        lineNumber: 223,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8607,7 +8909,7 @@ function UserProfilePage() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 231,
+                                                        lineNumber: 232,
                                                         columnNumber: 17
                                                     }, this),
                                                     userBadges.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8616,13 +8918,13 @@ function UserProfilePage() {
                                                         children: "✓"
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 233,
+                                                        lineNumber: 234,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 230,
+                                                lineNumber: 231,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8630,7 +8932,7 @@ function UserProfilePage() {
                                                 children: isOwnProfile ? t("这是你的个人主页", "This is your profile") : t("Fantasy 篮球玩家", "Fantasy Basketball Player")
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 236,
+                                                lineNumber: 237,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8644,7 +8946,7 @@ function UserProfilePage() {
                                                                 children: stats.totalPosts
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 240,
+                                                                lineNumber: 241,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8652,13 +8954,13 @@ function UserProfilePage() {
                                                                 children: t("帖子", "Posts")
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 241,
+                                                                lineNumber: 242,
                                                                 columnNumber: 19
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 239,
+                                                        lineNumber: 240,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8669,7 +8971,7 @@ function UserProfilePage() {
                                                                 children: followersCount
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 244,
+                                                                lineNumber: 245,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8677,13 +8979,13 @@ function UserProfilePage() {
                                                                 children: t("粉丝", "Followers")
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 245,
+                                                                lineNumber: 246,
                                                                 columnNumber: 19
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 243,
+                                                        lineNumber: 244,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8694,7 +8996,7 @@ function UserProfilePage() {
                                                                 children: followingCount
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 248,
+                                                                lineNumber: 249,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8702,31 +9004,31 @@ function UserProfilePage() {
                                                                 children: t("关注", "Following")
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 249,
+                                                                lineNumber: 250,
                                                                 columnNumber: 19
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 247,
+                                                        lineNumber: 248,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 238,
+                                                lineNumber: 239,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 229,
+                                        lineNumber: 230,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 221,
+                                lineNumber: 222,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8736,7 +9038,7 @@ function UserProfilePage() {
                                     children: t("编辑资料", "Edit Profile")
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 257,
+                                    lineNumber: 258,
                                     columnNumber: 15
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                     onClick: handleFollow,
@@ -8744,18 +9046,18 @@ function UserProfilePage() {
                                     children: isFollowing ? t("已关注", "Following") : t("关注", "Follow")
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 259,
+                                    lineNumber: 260,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 255,
+                                lineNumber: 256,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                        lineNumber: 220,
+                        lineNumber: 221,
                         columnNumber: 9
                     }, this),
                     userBadges.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8766,7 +9068,7 @@ function UserProfilePage() {
                                 children: t("徽章", "Badges")
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 269,
+                                lineNumber: 270,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8782,7 +9084,7 @@ function UserProfilePage() {
                                                 children: badge.icon
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 273,
+                                                lineNumber: 274,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8796,7 +9098,7 @@ function UserProfilePage() {
                                                         children: t(badge.name, badge.nameEn)
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 275,
+                                                        lineNumber: 276,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8804,30 +9106,30 @@ function UserProfilePage() {
                                                         children: t(badge.description, badge.descriptionEn)
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 276,
+                                                        lineNumber: 277,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 274,
+                                                lineNumber: 275,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, badge.id, true, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 272,
+                                        lineNumber: 273,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 270,
+                                lineNumber: 271,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                        lineNumber: 268,
+                        lineNumber: 269,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8844,7 +9146,7 @@ function UserProfilePage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 286,
+                                lineNumber: 287,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8858,7 +9160,7 @@ function UserProfilePage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 289,
+                                lineNumber: 290,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8872,7 +9174,7 @@ function UserProfilePage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 292,
+                                lineNumber: 293,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8881,13 +9183,13 @@ function UserProfilePage() {
                                 children: t("战绩统计", "Stats")
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 295,
+                                lineNumber: 296,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                        lineNumber: 285,
+                        lineNumber: 286,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8903,7 +9205,7 @@ function UserProfilePage() {
                                             children: "📝"
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 306,
+                                            lineNumber: 307,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8911,7 +9213,7 @@ function UserProfilePage() {
                                             children: isOwnProfile ? t("你还没有发布任何帖子", "You haven't posted anything yet") : t("该用户还没有发布帖子", "This user hasn't posted anything yet")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 307,
+                                            lineNumber: 308,
                                             columnNumber: 19
                                         }, this),
                                         isOwnProfile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -8920,13 +9222,13 @@ function UserProfilePage() {
                                             children: t("发布第一篇帖子", "Create Your First Post")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 308,
+                                            lineNumber: 309,
                                             columnNumber: 36
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 305,
+                                    lineNumber: 306,
                                     columnNumber: 17
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "jsx-76bb230ec81d1125" + " " + "posts-grid",
@@ -8949,12 +9251,12 @@ function UserProfilePage() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 317,
+                                                        lineNumber: 318,
                                                         columnNumber: 27
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                    lineNumber: 316,
+                                                    lineNumber: 317,
                                                     columnNumber: 25
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8965,7 +9267,7 @@ function UserProfilePage() {
                                                             children: insight.title
                                                         }, void 0, false, {
                                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                            lineNumber: 320,
+                                                            lineNumber: 321,
                                                             columnNumber: 27
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8973,11 +9275,11 @@ function UserProfilePage() {
                                                             children: [
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                     className: "jsx-76bb230ec81d1125",
-                                                                    children: formatDate(insight.createdAt)
+                                                                    children: formatDate(insight.created_at || insight.createdAt)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                    lineNumber: 322,
-                                                                    columnNumber: 29
+                                                                    lineNumber: 323,
+                                                                    columnNumber: 27
                                                                 }, this),
                                                                 parsed.tags && parsed.tags[0] && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                     className: "jsx-76bb230ec81d1125" + " " + "post-tag",
@@ -8987,36 +9289,36 @@ function UserProfilePage() {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                    lineNumber: 323,
+                                                                    lineNumber: 324,
                                                                     columnNumber: 63
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                            lineNumber: 321,
+                                                            lineNumber: 322,
                                                             columnNumber: 27
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                    lineNumber: 319,
+                                                    lineNumber: 320,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, insight.id, true, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 315,
+                                            lineNumber: 316,
                                             columnNumber: 23
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 311,
+                                    lineNumber: 312,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 303,
+                                lineNumber: 304,
                                 columnNumber: 13
                             }, this),
                             activeTab === "leagues" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9034,12 +9336,12 @@ function UserProfilePage() {
                                             children: t("清理重复", "Clean Duplicates")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 338,
+                                            lineNumber: 339,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 337,
+                                        lineNumber: 338,
                                         columnNumber: 17
                                     }, this),
                                     userLeagues.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9050,7 +9352,7 @@ function UserProfilePage() {
                                                 children: "🏀"
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 343,
+                                                lineNumber: 344,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -9058,7 +9360,7 @@ function UserProfilePage() {
                                                 children: isOwnProfile ? t("你还没有创建任何联赛", "You haven't created any leagues") : t("该用户还没有联赛", "This user has no leagues")
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 344,
+                                                lineNumber: 345,
                                                 columnNumber: 19
                                             }, this),
                                             isOwnProfile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -9067,13 +9369,13 @@ function UserProfilePage() {
                                                 children: t("创建联赛", "Create League")
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 345,
+                                                lineNumber: 346,
                                                 columnNumber: 36
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 342,
+                                        lineNumber: 343,
                                         columnNumber: 17
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "jsx-76bb230ec81d1125" + " " + "leagues-list",
@@ -9089,7 +9391,7 @@ function UserProfilePage() {
                                                                 children: "🏀"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 352,
+                                                                lineNumber: 353,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9100,7 +9402,7 @@ function UserProfilePage() {
                                                                         children: league.name
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                        lineNumber: 354,
+                                                                        lineNumber: 355,
                                                                         columnNumber: 27
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9111,33 +9413,33 @@ function UserProfilePage() {
                                                                                 children: league.visibility === "public" ? t("公开", "Public") : t("私人", "Private")
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                                lineNumber: 356,
+                                                                                lineNumber: 357,
                                                                                 columnNumber: 29
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                                 className: "jsx-76bb230ec81d1125",
-                                                                                children: formatDate(league.createdAt)
+                                                                                children: formatDate(league.created_at || league.createdAt)
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                                lineNumber: 357,
+                                                                                lineNumber: 358,
                                                                                 columnNumber: 29
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                        lineNumber: 355,
+                                                                        lineNumber: 356,
                                                                         columnNumber: 27
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                lineNumber: 353,
+                                                                lineNumber: 354,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 351,
+                                                        lineNumber: 352,
                                                         columnNumber: 23
                                                     }, this),
                                                     isOwnProfile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -9146,24 +9448,24 @@ function UserProfilePage() {
                                                         children: "🗑️"
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 361,
+                                                        lineNumber: 362,
                                                         columnNumber: 40
                                                     }, this)
                                                 ]
                                             }, league.id, true, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 350,
+                                                lineNumber: 351,
                                                 columnNumber: 21
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 348,
+                                        lineNumber: 349,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 335,
+                                lineNumber: 336,
                                 columnNumber: 13
                             }, this),
                             activeTab === "drafts" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9176,7 +9478,7 @@ function UserProfilePage() {
                                             children: "📋"
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 373,
+                                            lineNumber: 374,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -9184,7 +9486,7 @@ function UserProfilePage() {
                                             children: t("还没有选秀记录", "No draft history yet")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 374,
+                                            lineNumber: 375,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -9192,7 +9494,7 @@ function UserProfilePage() {
                                             children: t("完成联赛选秀后，记录会显示在这里", "Complete a league draft to see your history here")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 375,
+                                            lineNumber: 376,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -9201,13 +9503,13 @@ function UserProfilePage() {
                                             children: t("开始模拟选秀", "Start Mock Draft")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 376,
+                                            lineNumber: 377,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 372,
+                                    lineNumber: 373,
                                     columnNumber: 17
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "jsx-76bb230ec81d1125" + " " + "drafts-list",
@@ -9225,7 +9527,7 @@ function UserProfilePage() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                    lineNumber: 382,
+                                                    lineNumber: 383,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9236,7 +9538,7 @@ function UserProfilePage() {
                                                             children: draft.leagueName
                                                         }, void 0, false, {
                                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                            lineNumber: 384,
+                                                            lineNumber: 385,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9247,7 +9549,7 @@ function UserProfilePage() {
                                                                     children: draft.season
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                    lineNumber: 385,
+                                                                    lineNumber: 386,
                                                                     columnNumber: 53
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -9255,7 +9557,7 @@ function UserProfilePage() {
                                                                     children: "•"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                    lineNumber: 385,
+                                                                    lineNumber: 386,
                                                                     columnNumber: 80
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -9267,19 +9569,19 @@ function UserProfilePage() {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                                    lineNumber: 385,
+                                                                    lineNumber: 386,
                                                                     columnNumber: 94
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                            lineNumber: 385,
+                                                            lineNumber: 386,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                    lineNumber: 383,
+                                                    lineNumber: 384,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9290,23 +9592,23 @@ function UserProfilePage() {
                                                     children: draft.result
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                    lineNumber: 387,
+                                                    lineNumber: 388,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, draft.id, true, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 381,
+                                            lineNumber: 382,
                                             columnNumber: 21
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 379,
+                                    lineNumber: 380,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 370,
+                                lineNumber: 371,
                                 columnNumber: 13
                             }, this),
                             activeTab === "stats" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9350,7 +9652,7 @@ function UserProfilePage() {
                                                 children: stat.icon
                                             }, void 0, false, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 406,
+                                                lineNumber: 407,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9361,7 +9663,7 @@ function UserProfilePage() {
                                                         children: stat.value
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 408,
+                                                        lineNumber: 409,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -9369,30 +9671,30 @@ function UserProfilePage() {
                                                         children: stat.label
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                        lineNumber: 409,
+                                                        lineNumber: 410,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                                lineNumber: 407,
+                                                lineNumber: 408,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, i, true, {
                                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                        lineNumber: 405,
+                                        lineNumber: 406,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                lineNumber: 396,
+                                lineNumber: 397,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                        lineNumber: 301,
+                        lineNumber: 302,
                         columnNumber: 9
                     }, this),
                     showDeleteModal && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9407,7 +9709,7 @@ function UserProfilePage() {
                                     children: t("确认删除", "Confirm Delete")
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 421,
+                                    lineNumber: 422,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -9419,7 +9721,7 @@ function UserProfilePage() {
                                     children: t("确定要删除这个联赛吗？", "Are you sure you want to delete this league?")
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 422,
+                                    lineNumber: 423,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9436,7 +9738,7 @@ function UserProfilePage() {
                                             children: t("取消", "Cancel")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 424,
+                                            lineNumber: 425,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -9445,30 +9747,30 @@ function UserProfilePage() {
                                             children: t("删除", "Delete")
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                            lineNumber: 425,
+                                            lineNumber: 426,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                                    lineNumber: 423,
+                                    lineNumber: 424,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                            lineNumber: 420,
+                            lineNumber: 421,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                        lineNumber: 419,
+                        lineNumber: 420,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-                lineNumber: 218,
+                lineNumber: 219,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$styled$2d$jsx$2f$style$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -9478,7 +9780,7 @@ function UserProfilePage() {
         ]
     }, void 0, true, {
         fileName: "[project]/fantasy-web/app/u/[username]/page.tsx",
-        lineNumber: 215,
+        lineNumber: 216,
         columnNumber: 5
     }, this);
 }

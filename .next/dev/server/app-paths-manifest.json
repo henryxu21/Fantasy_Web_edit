@@ -3,8 +3,11 @@
   "/compare/page": "app/compare/page.js",
   "/draft-guide/page": "app/draft-guide/page.js",
   "/how-to-play/page": "app/how-to-play/page.js",
+  "/insights/[id]/page": "app/insights/[id]/page.js",
+  "/insights/new/page": "app/insights/new/page.js",
   "/mock-draft/page": "app/mock-draft/page.js",
   "/my-team/page": "app/my-team/page.js",
   "/page": "app/page.js",
-  "/rankings/page": "app/rankings/page.js"
+  "/rankings/page": "app/rankings/page.js",
+  "/u/[username]/page": "app/u/[username]/page.js"
 }

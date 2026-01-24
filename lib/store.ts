@@ -32,6 +32,8 @@
      title: string;
      body: string;
      league_slug?: string;
+     cover_url?: string;    // 新增
+     tags?: string[];       // 新增
      author_id: string;
      author?: User;
      heat: number;
@@ -260,6 +262,40 @@
      return data;
    }
    
+   // ==================== Image Upload (Supabase Storage) ====================
+   
+   export async function uploadImage(
+     file: File,
+     folder: string = "images"
+   ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+     const user = getSessionUser();
+     if (!user) return { ok: false, error: "Login required" };
+   
+     // 生成唯一文件名
+     const ext = file.name.split(".").pop() || "jpg";
+     const fileName = `${folder}/${user.id}_${Date.now()}.${ext}`;
+   
+     // 上传到 Supabase Storage
+     const { data, error } = await supabase.storage
+       .from("images")
+       .upload(fileName, file, {
+         cacheControl: "3600",
+         upsert: false,
+       });
+   
+     if (error) {
+       console.error("Upload error:", error);
+       return { ok: false, error: error.message };
+     }
+   
+     // 获取公开 URL
+     const { data: urlData } = supabase.storage
+       .from("images")
+       .getPublicUrl(data.path);
+   
+     return { ok: true, url: urlData.publicUrl };
+   }
+   
    // ==================== Insights (Supabase) ====================
    
    export async function listInsights(): Promise<Insight[]> {
@@ -288,6 +324,8 @@
      title: string;
      body: string;
      league_slug?: string;
+     cover_url?: string;    // 新增
+     tags?: string[];       // 新增
    }) {
      const user = getSessionUser();
      if (!user) return { ok: false as const, error: "Login required" };
@@ -298,6 +336,8 @@
          title: input.title.trim(),
          body: input.body.trim(),
          league_slug: input.league_slug,
+         cover_url: input.cover_url,     // 新增
+         tags: input.tags,               // 新增
          author_id: user.id,
          heat: Math.floor(80 + Math.random() * 200),
        })

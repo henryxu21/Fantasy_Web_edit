@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createInsight, getSessionUser, listLeagues, type League } from "@/lib/store";
+import { createInsight, getSessionUser, listLeagues, uploadImage, type League } from "@/lib/store";
 import Header from "@/components/Header";
 
 type LeagueOption = { slug: string; name: string };
@@ -22,6 +22,7 @@ export default function NewInsightPage() {
   const [tagInput, setTagInput] = useState("");
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +39,20 @@ export default function NewInsightPage() {
       }
     })();
   }, []);
+
+  // 处理封面图片选择，生成预览
+  function handleCoverChange(file: File | null) {
+    setCoverFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setCoverPreview(null);
+    }
+  }
 
   const leagueSelectDisabled = useMemo(
     () => submitting || loadingLeagues || leagues.length === 0,
@@ -73,19 +88,39 @@ export default function NewInsightPage() {
     setSubmitting(true);
     setError(null);
 
-    const res = await createInsight({
-      title,
-      body,
-      league_slug: leagueSlug ? leagueSlug : undefined,
-    });
+    try {
+      // 1. 如果有封面图片，先上传
+      let coverUrl: string | undefined;
+      if (coverFile) {
+        const uploadRes = await uploadImage(coverFile, "covers");
+        if (!uploadRes.ok) {
+          setError(uploadRes.error ?? "图片上传失败");
+          setSubmitting(false);
+          return;
+        }
+        coverUrl = uploadRes.url;
+      }
 
-    if (!res.ok) {
+      // 2. 创建 insight
+      const res = await createInsight({
+        title,
+        body,
+        league_slug: leagueSlug ? leagueSlug : undefined,
+        cover_url: coverUrl,
+        tags: tags.length > 0 ? tags : undefined,
+      });
+
+      if (!res.ok) {
+        setSubmitting(false);
+        setError(res.error ?? "发布失败");
+        return;
+      }
+
+      router.push("/");
+    } catch (err) {
+      setError("发布失败，请重试");
       setSubmitting(false);
-      setError(res.error ?? "发布失败");
-      return;
     }
-
-    router.push("/");
   }
 
   const POPULAR_TAGS = ["选秀策略", "球员分析", "交易建议", "新手指南", "Punt策略"];
@@ -109,21 +144,42 @@ export default function NewInsightPage() {
                 type="file"
                 accept="image/*"
                 style={{ display: 'none' }}
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => handleCoverChange(e.target.files?.[0] ?? null)}
                 disabled={submitting}
               />
               <button
                 type="button"
                 onClick={() => coverInputRef.current?.click()}
                 disabled={submitting}
-                style={styles.uploadBox}
+                style={{
+                  ...styles.uploadBox,
+                  ...(coverPreview ? { padding: 0, overflow: 'hidden' } : {})
+                }}
               >
-                <div style={styles.uploadIcon}>🖼</div>
-                <div style={styles.uploadText}>
-                  {coverFile ? `已选择：${coverFile.name}` : "点击上传封面图"}
-                </div>
-                <div style={styles.uploadHint}>推荐尺寸 16:9，最大 5MB</div>
+                {coverPreview ? (
+                  <div style={styles.previewContainer}>
+                    <img src={coverPreview} alt="预览" style={styles.previewImage} />
+                    <div style={styles.previewOverlay}>
+                      <span>点击更换图片</span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={styles.uploadIcon}>🖼</div>
+                    <div style={styles.uploadText}>点击上传封面图</div>
+                    <div style={styles.uploadHint}>推荐尺寸 16:9，最大 5MB</div>
+                  </>
+                )}
               </button>
+              {coverFile && (
+                <button
+                  type="button"
+                  onClick={() => handleCoverChange(null)}
+                  style={styles.removeCoverBtn}
+                >
+                  移除封面
+                </button>
+              )}
             </section>
 
             {/* Title */}
@@ -153,7 +209,7 @@ export default function NewInsightPage() {
               />
             </section>
 
-            {/* Analysis Images */}
+            {/* Analysis Images - 暂时保留UI但不实现功能 */}
             <section style={styles.section}>
               <label style={styles.label}>分析配图 <span style={styles.optional}>(最多9张)</span></label>
               <div style={styles.imageGrid}>
@@ -343,6 +399,38 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
     marginTop: 4,
+  },
+  previewContainer: {
+    position: 'relative' as const,
+    width: '100%',
+    aspectRatio: '16/9',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+  },
+  previewOverlay: {
+    position: 'absolute' as const,
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0,
+    transition: 'opacity 0.2s',
+    color: '#fff',
+    fontSize: 14,
+  },
+  removeCoverBtn: {
+    marginTop: 8,
+    padding: '6px 12px',
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 6,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    cursor: 'pointer',
   },
   input: {
     width: '100%',

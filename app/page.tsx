@@ -4,237 +4,107 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import { useLang } from "@/lib/lang";
-import { listInsights, listLeagues, getStats, Insight, League } from "@/lib/store";
+import { listInsights, Insight } from "@/lib/store";
 
 type ParsedInsight = Insight & {
   coverImage?: string;
-  images?: string[];
   tags?: string[];
   content?: string;
 };
 
-// 热门标签
-const TRENDING_TAGS = [
-  { tag: "选秀策略", emoji: "🎯" },
-  { tag: "球员分析", emoji: "📊" },
-  { tag: "交易建议", emoji: "🔄" },
-  { tag: "新手指南", emoji: "📚" },
-  { tag: "Punt策略", emoji: "🎲" },
-  { tag: "伤病更新", emoji: "🏥" },
-  { tag: "每周推荐", emoji: "⭐" },
-];
-
-// 示例数据（当没有真实数据时显示）
-const SAMPLE_POSTS: ParsedInsight[] = [
-  {
-    id: "sample-1",
-    title: "2024-25 赛季首轮选秀策略深度分析",
-    body: "",
-    content: "详解如何在首轮做出最佳选择，避开常见陷阱...",
-    author_id: "",
-    author: { id: "", name: "Blueprint", email: "", username: "Blueprint" },
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    heat: 328,
-    coverImage: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=300&fit=crop",
-    tags: ["选秀策略", "新手指南"],
-  },
-  {
-    id: "sample-2",
-    title: "Punt 助攻策略：如何构建顶级篮板阵容",
-    body: "",
-    content: "放弃助攻类别后，你可以专注于篮板和防守...",
-    author_id: "",
-    author: { id: "", name: "FantasyPro", email: "", username: "FantasyPro" },
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-    heat: 256,
-    coverImage: "https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?w=400&h=500&fit=crop",
-    tags: ["Punt策略", "球员分析"],
-  },
-  {
-    id: "sample-3",
-    title: "本周值得关注的 5 位潜力股",
-    body: "",
-    content: "这些球员可能在接下来几周大幅提升价值...",
-    author_id: "",
-    author: { id: "", name: "FantasyGuru", email: "", username: "FantasyGuru" },
-    created_at: new Date(Date.now() - 259200000).toISOString(),
-    heat: 189,
-    coverImage: "https://images.unsplash.com/photo-1504450758481-7338bbe75c8e?w=400&h=350&fit=crop",
-    tags: ["每周推荐", "球员分析"],
-  },
-  {
-    id: "sample-4",
-    title: "新手必读：9-Cat 联赛入门完全指南",
-    body: "",
-    content: "从零开始了解 Fantasy 篮球的所有基础知识...",
-    author_id: "",
-    author: { id: "", name: "Rookie101", email: "", username: "Rookie101" },
-    created_at: new Date(Date.now() - 345600000).toISOString(),
-    heat: 412,
-    coverImage: "https://images.unsplash.com/photo-1519861531473-9200262188bf?w=400&h=280&fit=crop",
-    tags: ["新手指南"],
-  },
-  {
-    id: "sample-5",
-    title: "交易窗口期：哪些球员应该趁高卖出？",
-    body: "",
-    content: "分析当前市场，找出被高估的球员...",
-    author_id: "",
-    author: { id: "", name: "TradeKing", email: "", username: "TradeKing" },
-    created_at: new Date(Date.now() - 432000000).toISOString(),
-    heat: 167,
-    coverImage: "https://images.unsplash.com/photo-1577471488278-16eec37ffcc2?w=400&h=450&fit=crop",
-    tags: ["交易建议"],
-  },
-  {
-    id: "sample-6",
-    title: "伤病警报：关键球员复出时间表更新",
-    body: "",
-    content: "追踪重要球员的伤病恢复进度...",
-    author_id: "",
-    author: { id: "", name: "InjuryReport", email: "", username: "InjuryReport" },
-    created_at: new Date(Date.now() - 518400000).toISOString(),
-    heat: 234,
-    coverImage: "https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=400&h=320&fit=crop",
-    tags: ["伤病更新"],
-  },
+const CATEGORIES = [
+  { id: "all", label: "推荐", labelEn: "For You" },
+  { id: "选秀策略", label: "选秀策略", labelEn: "Draft" },
+  { id: "球员分析", label: "球员分析", labelEn: "Analysis" },
+  { id: "交易建议", label: "交易建议", labelEn: "Trade" },
+  { id: "新手指南", label: "新手指南", labelEn: "Guide" },
+  { id: "Punt策略", label: "Punt策略", labelEn: "Punt" },
 ];
 
 export default function HomePage() {
-  const { t } = useLang();
-  const [activeTab, setActiveTab] = useState<"insights" | "leagues">("insights");
+  const { t, lang } = useLang();
   const [insights, setInsights] = useState<ParsedInsight[]>([]);
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ insightsCount: 0, leaguesCount: 0, usersCount: 0 });
 
   useEffect(() => {
     async function loadData() {
       try {
-        // 加载帖子（现在是异步的）
         const rawInsights = await listInsights();
-        const parsed = rawInsights.map((item): ParsedInsight => {
-          let coverImage: string | undefined;
-          let images: string[] | undefined;
-          let tags: string[] | undefined;
-          let content = item.body;
+        const parsed = rawInsights.map((item): ParsedInsight => ({
+          ...item,
+          coverImage: item.cover_url,
+          tags: item.tags,
+          content: item.body,
+        }));
 
-          try {
-            const parsedBody = JSON.parse(item.body);
-            if (parsedBody.content) {
-              content = parsedBody.content;
-              coverImage = parsedBody.metadata?.coverImage;
-              images = parsedBody.metadata?.images;
-              tags = parsedBody.metadata?.tags;
-            }
-          } catch {}
-
-          return { ...item, coverImage, images, tags, content };
-        });
-
-        // 如果没有真实帖子，使用示例数据
-        const finalInsights = parsed.length > 0 ? parsed : SAMPLE_POSTS;
-        setInsights(finalInsights.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ));
-
-        // 加载联赛（现在是异步的）
-        const leaguesData = await listLeagues();
-        setLeagues(leaguesData);
-
-        // 加载统计数据
-        const statsData = await getStats();
-        setStats(statsData);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        // 出错时使用示例数据
-        setInsights(SAMPLE_POSTS);
+        setInsights(
+          parsed.sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+        );
+      } catch (e) {
+        console.error(e);
       } finally {
         setIsLoading(false);
       }
     }
-
     loadData();
   }, []);
 
-  const filteredInsights = selectedTag 
-    ? insights.filter(i => i.tags?.includes(selectedTag))
-    : insights;
+  const filteredInsights =
+    selectedCategory === "all"
+      ? insights
+      : insights.filter((i) => i.tags?.includes(selectedCategory));
 
-  const formatTime = (timestamp: string | number) => {
-    const time = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
-    const diff = Date.now() - time;
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (hours < 1) return t("刚刚", "Just now");
-    if (hours < 24) return `${hours}${t("小时前", "h ago")}`;
-    if (days < 7) return `${days}${t("天前", "d ago")}`;
-    return new Date(time).toLocaleDateString();
-  };
-
-  // 为瀑布流分配列
-  const getColumns = () => {
-    const left: ParsedInsight[] = [];
-    const right: ParsedInsight[] = [];
-    filteredInsights.forEach((item, index) => {
-      if (index % 2 === 0) left.push(item);
-      else right.push(item);
-    });
-    return { left, right };
-  };
-
-  const { left, right } = getColumns();
-
-  // 获取作者显示名称
   const getAuthorName = (item: ParsedInsight) => {
-    if (item.author?.username) return `@${item.author.username}`;
+    if (item.author?.username) return item.author.username;
     if (item.author?.name) return item.author.name;
     return "Anonymous";
   };
 
-  const renderCard = (item: ParsedInsight, index: number) => {
-    const hasImage = item.coverImage || (item.images && item.images.length > 0);
-    const displayImage = item.coverImage || item.images?.[0];
-    const isSample = item.id.startsWith("sample-");
+  const formatLikes = (num: number) => {
+    const n = Number(num || 0);
+    if (n >= 10000) return (n / 10000).toFixed(1) + "万";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+    return String(n);
+  };
+
+  const renderPostCard = (item: ParsedInsight) => {
     const authorName = getAuthorName(item);
-    
+    const hasImage = !!item.coverImage;
+
     return (
-      <Link 
-        href={isSample ? "#" : `/insights/${item.id}`} 
-        key={item.id} 
-        className="feed-card"
-        style={{ animationDelay: `${index * 0.05}s` }}
-      >
-        {hasImage && (
-          <div className="card-image">
-            <img src={displayImage} alt={item.title} loading="lazy" />
-            <div className="image-overlay" />
+      <Link href={`/insights/${item.id}`} key={item.id} className="post-card">
+        {/* 图片 */}
+        <div className="post-media">
+          {hasImage ? (
+            <img
+              src={item.coverImage}
+              alt={item.title || "post"}
+              loading="lazy"
+            />
+          ) : (
+            <div className="post-placeholder">
+              <div className="ph-icon">🏀</div>
+              <div className="ph-title">{(item.title || "Insight").slice(0, 16)}</div>
+            </div>
+          )}
+        </div>
+
+        {/* 图片下方：用户名 + 点赞 */}
+        <div className="post-footer">
+          <div className="user">
+            <span className="avatar">{authorName[0]?.toUpperCase()}</span>
+            <span className="name" title={authorName}>
+              {authorName}
+            </span>
           </div>
-        )}
-        <div className="card-content">
-          <h3 className="card-title">{item.title}</h3>
-          {item.content && (
-            <p className="card-excerpt">
-              {item.content.slice(0, 60)}{item.content.length > 60 ? "..." : ""}
-            </p>
-          )}
-          {item.tags && item.tags.length > 0 && (
-            <div className="card-tags">
-              {item.tags.slice(0, 2).map(tag => (
-                <span key={tag} className="card-tag">#{tag}</span>
-              ))}
-            </div>
-          )}
-          <div className="card-footer">
-            <div className="card-author">
-              <div className="author-avatar">{authorName[1]?.toUpperCase() || "?"}</div>
-              <span className="author-name">{authorName}</span>
-            </div>
-            <div className="card-stats">
-              <span className="stat-item">❤️ {item.heat}</span>
-            </div>
+
+          <div className="like">
+            <span className="like-icon">❤️</span>
+            <span className="like-num">{formatLikes(item.heat)}</span>
           </div>
         </div>
       </Link>
@@ -245,12 +115,29 @@ export default function HomePage() {
     return (
       <div className="app">
         <Header />
-        <main className="home-page">
-          <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏀</div>
-            <p style={{ color: 'var(--text-muted)' }}>{t("加载中...", "Loading...")}</p>
+        <main className="feed-page">
+          <div className="loading">
+            <div className="loading-icon">🏀</div>
+            <p>{t("加载中...", "Loading...")}</p>
           </div>
         </main>
+        <style jsx>{`
+          .feed-page {
+            min-height: 100vh;
+            background: var(--bg-primary);
+          }
+          .loading {
+            text-align: center;
+            padding: 120px 20px;
+          }
+          .loading-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+          }
+          .loading p {
+            color: var(--text-muted);
+          }
+        `}</style>
       </div>
     );
   }
@@ -259,486 +146,289 @@ export default function HomePage() {
     <div className="app">
       <Header />
 
-      <main className="home-page">
-        {/* Hero Section */}
-        <section className="hero-section">
-          <div className="hero-content">
-            <h1 className="hero-title">
-              {t("发现最佳", "Discover the Best")}
-              <br />
-              <span className="hero-highlight">{t("Fantasy 篮球策略", "Fantasy Basketball Strategies")}</span>
-            </h1>
-            <p className="hero-desc">
-              {t("与数千玩家一起分享洞见、交流策略、赢得冠军", "Join thousands of players sharing insights, strategies, and winning championships")}
-            </p>
-            <div className="hero-actions">
-              <Link href="/insights/new" className="btn btn-primary btn-lg">
-                ✍️ {t("分享洞见", "Share Insight")}
-              </Link>
-              <Link href="/league/new" className="btn btn-ghost btn-lg">
-                🏀 {t("创建联赛", "Create League")}
-              </Link>
-            </div>
-          </div>
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <span className="stat-number">{stats.insightsCount > 0 ? stats.insightsCount : insights.length}</span>
-              <span className="stat-label">{t("篇洞见", "Insights")}</span>
-            </div>
-            <div className="hero-stat">
-              <span className="stat-number">{stats.leaguesCount > 0 ? stats.leaguesCount : leagues.length}</span>
-              <span className="stat-label">{t("个联赛", "Leagues")}</span>
-            </div>
-            <div className="hero-stat">
-              <span className="stat-number">{stats.usersCount > 0 ? stats.usersCount : "0"}</span>
-              <span className="stat-label">{t("位玩家", "Players")}</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Trending Tags */}
-        <section className="tags-section">
-          <div className="tags-header">
-            <h2 className="tags-title">🔥 {t("热门话题", "Trending Topics")}</h2>
-          </div>
-          <div className="tags-scroll">
-            <button 
-              className={`tag-pill ${selectedTag === null ? "active" : ""}`}
-              onClick={() => setSelectedTag(null)}
-            >
-              {t("全部", "All")}
-            </button>
-            {TRENDING_TAGS.map(({ tag, emoji }) => (
-              <button 
-                key={tag}
-                className={`tag-pill ${selectedTag === tag ? "active" : ""}`}
-                onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+      <main className="feed-page">
+        {/* 分类导航 */}
+        <nav className="category-nav">
+          <div className="category-scroll">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                className={`category-tab ${
+                  selectedCategory === cat.id ? "active" : ""
+                }`}
+                onClick={() => setSelectedCategory(cat.id)}
               >
-                {emoji} {tag}
+                {lang === "zh" ? cat.label : cat.labelEn}
               </button>
             ))}
           </div>
-        </section>
+        </nav>
 
-        {/* Tab Navigation */}
-        <div className="tab-nav">
-          <button 
-            className={`tab-btn ${activeTab === "insights" ? "active" : ""}`}
-            onClick={() => setActiveTab("insights")}
-          >
-            💡 {t("洞见", "Insights")}
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === "leagues" ? "active" : ""}`}
-            onClick={() => setActiveTab("leagues")}
-          >
-            🏆 {t("联赛", "Leagues")}
-          </button>
+        <div className="feed-container">
+          {filteredInsights.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">📝</div>
+              <h3>{t("还没有内容", "No posts yet")}</h3>
+              <p>{t("成为第一个发布洞见的人吧！", "Be the first to share!")}</p>
+              <Link href="/insights/new" className="empty-btn">
+                {t("发布洞见", "Post Insight")}
+              </Link>
+            </div>
+          ) : (
+            <div className="grid">
+              {filteredInsights.map((item) => renderPostCard(item))}
+            </div>
+          )}
         </div>
 
-        {/* Content */}
-        {activeTab === "insights" ? (
-          <section className="feed-section">
-            {filteredInsights.length === 0 ? (
-              <div className="empty-feed">
-                <div className="empty-icon">📝</div>
-                <h3>{t("暂无相关内容", "No content found")}</h3>
-                <p>{t("成为第一个分享洞见的人！", "Be the first to share an insight!")}</p>
-                <Link href="/insights/new" className="btn btn-primary">
-                  {t("发布洞见", "Share Insight")}
-                </Link>
-              </div>
-            ) : (
-              <div className="masonry-grid">
-                <div className="masonry-column">
-                  {left.map((item, index) => renderCard(item, index * 2))}
-                </div>
-                <div className="masonry-column">
-                  {right.map((item, index) => renderCard(item, index * 2 + 1))}
-                </div>
-              </div>
-            )}
-          </section>
-        ) : (
-          <section className="leagues-section">
-            {leagues.length === 0 ? (
-              <div className="empty-feed">
-                <div className="empty-icon">🏀</div>
-                <h3>{t("暂无联赛", "No leagues yet")}</h3>
-                <p>{t("创建你的第一个联赛！", "Create your first league!")}</p>
-                <Link href="/league/new" className="btn btn-primary">
-                  {t("创建联赛", "Create League")}
-                </Link>
-              </div>
-            ) : (
-              <div className="leagues-grid">
-                {leagues.map(league => (
-                  <Link href={`/league/${league.slug}`} key={league.id} className="league-card">
-                    <div className="league-icon">🏀</div>
-                    <div className="league-info">
-                      <h3 className="league-name">{league.name}</h3>
-                      <div className="league-meta">
-                        <span className="league-badge">{league.visibility === "public" ? t("公开", "Public") : t("私人", "Private")}</span>
-                        <span>{formatTime(league.created_at)}</span>
-                      </div>
-                    </div>
-                    <div className="league-arrow">→</div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+        {/* 悬浮发布 */}
+        <Link href="/insights/new" className="fab" aria-label="Post">
+          <span>+</span>
+        </Link>
       </main>
 
       <style jsx>{`
-        .home-page {
+        .feed-page {
+          min-height: 100vh;
+          background: var(--bg-primary);
+        }
+
+        /* 分类导航 */
+        .category-nav {
+          position: sticky;
+          top: 60px;
+          z-index: 50;
+          background: var(--bg-primary);
+          border-bottom: 1px solid var(--border-color);
+        }
+        .category-scroll {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 0 16px 60px;
-        }
-
-        /* Hero Section */
-        .hero-section {
-          padding: 48px 0;
-          text-align: center;
-        }
-        .hero-title {
-          font-size: 36px;
-          font-weight: 800;
-          line-height: 1.2;
-          margin-bottom: 16px;
-        }
-        .hero-highlight {
-          background: linear-gradient(135deg, #f59e0b, #f97316);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .hero-desc {
-          font-size: 16px;
-          color: var(--text-muted);
-          max-width: 500px;
-          margin: 0 auto 24px;
-        }
-        .hero-actions {
           display: flex;
-          gap: 12px;
-          justify-content: center;
-          flex-wrap: wrap;
-        }
-        .btn-lg {
-          padding: 14px 28px;
-          font-size: 16px;
-        }
-        .hero-stats {
-          display: flex;
-          justify-content: center;
-          gap: 48px;
-          margin-top: 48px;
-          padding-top: 32px;
-          border-top: 1px solid var(--border-color);
-        }
-        .hero-stat {
-          text-align: center;
-        }
-        .stat-number {
-          display: block;
-          font-size: 32px;
-          font-weight: 700;
-          color: var(--accent);
-        }
-        .stat-label {
-          font-size: 14px;
-          color: var(--text-muted);
-        }
-
-        /* Tags Section */
-        .tags-section {
-          margin-bottom: 24px;
-        }
-        .tags-title {
-          font-size: 16px;
-          font-weight: 600;
-          margin-bottom: 12px;
-        }
-        .tags-scroll {
-          display: flex;
-          gap: 8px;
+          gap: 6px;
+          padding: 12px 16px;
           overflow-x: auto;
-          padding-bottom: 8px;
-          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
         }
-        .tags-scroll::-webkit-scrollbar {
+        .category-scroll::-webkit-scrollbar {
           display: none;
         }
-        .tag-pill {
-          flex-shrink: 0;
-          padding: 8px 16px;
-          border-radius: 20px;
-          background: var(--bg-card);
-          border: 1px solid var(--border-color);
-          color: var(--text-secondary);
+        .category-tab {
+          padding: 8px 18px;
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
           font-size: 14px;
+          font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
           white-space: nowrap;
+          border-radius: 999px;
         }
-        .tag-pill:hover {
-          border-color: var(--accent);
-          color: var(--accent);
-        }
-        .tag-pill.active {
-          background: var(--accent);
-          border-color: var(--accent);
-          color: #000;
-          font-weight: 600;
-        }
-
-        /* Tab Navigation */
-        .tab-nav {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 24px;
-          border-bottom: 1px solid var(--border-color);
-          padding-bottom: 12px;
-        }
-        .tab-btn {
-          padding: 10px 20px;
-          border-radius: 20px;
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          font-size: 15px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .tab-btn:hover {
+        .category-tab:hover {
+          background: var(--bg-secondary);
           color: var(--text-primary);
         }
-        .tab-btn.active {
+        .category-tab.active {
           background: var(--accent);
           color: #000;
-          font-weight: 600;
         }
 
-        /* Masonry Grid */
-        .masonry-grid {
-          display: flex;
-          gap: 16px;
-        }
-        .masonry-column {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
+        /* 内容容器：固定网页宽度 */
+        .feed-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 18px 16px 110px;
         }
 
-        /* Feed Card */
-        .feed-card {
+        /* ✅ 关键：网格，不重叠 */
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 18px;
+          align-items: start;
+        }
+
+        /* 单个帖子卡片 */
+        .post-card {
           display: block;
           background: var(--bg-card);
-          border-radius: 16px;
+          border: 1px solid var(--border-color);
+          border-radius: 14px;
           overflow: hidden;
           text-decoration: none;
           color: inherit;
-          border: 1px solid var(--border-color);
-          transition: all 0.3s ease;
-          animation: fadeInUp 0.5s ease forwards;
-          opacity: 0;
+          transition: transform 0.15s ease, box-shadow 0.15s ease,
+            border-color 0.15s ease;
         }
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        .post-card:hover {
+          transform: translateY(-3px);
+          border-color: rgba(245, 158, 11, 0.7);
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
         }
-        .feed-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-          border-color: var(--accent);
-        }
-        .card-image {
-          position: relative;
+
+        /* ✅ 图片区域：统一比例，防止图片撑爆 */
+        .post-media {
           width: 100%;
+          aspect-ratio: 4 / 5; /* 小红书常见竖图 */
+          background: rgba(255, 255, 255, 0.03);
           overflow: hidden;
         }
-        .card-image img {
+        .post-media img {
           width: 100%;
-          height: auto;
+          height: 100%;
+          object-fit: cover; /* 永远铺满，不会撑开 */
           display: block;
-          transition: transform 0.3s ease;
         }
-        .feed-card:hover .card-image img {
-          transform: scale(1.05);
-        }
-        .image-overlay {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 60px;
-          background: linear-gradient(transparent, rgba(0,0,0,0.3));
-        }
-        .card-content {
-          padding: 16px;
-        }
-        .card-title {
-          font-size: 15px;
-          font-weight: 600;
-          line-height: 1.4;
-          margin-bottom: 8px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .card-excerpt {
-          font-size: 13px;
-          color: var(--text-muted);
-          line-height: 1.5;
-          margin-bottom: 12px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .card-tags {
+
+        /* 没图占位 */
+        .post-placeholder {
+          width: 100%;
+          height: 100%;
           display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
-          margin-bottom: 12px;
-        }
-        .card-tag {
-          font-size: 12px;
-          color: var(--accent);
-          background: rgba(245, 158, 11, 0.1);
-          padding: 2px 8px;
-          border-radius: 10px;
-        }
-        .card-footer {
-          display: flex;
-          justify-content: space-between;
+          flex-direction: column;
           align-items: center;
+          justify-content: center;
+          gap: 10px;
+          text-align: center;
+          padding: 14px;
+          background: radial-gradient(
+              900px 400px at 10% 10%,
+              rgba(245, 158, 11, 0.18),
+              transparent 60%
+            ),
+            rgba(255, 255, 255, 0.02);
         }
-        .card-author {
+        .ph-icon {
+          font-size: 34px;
+          opacity: 0.9;
+        }
+        .ph-title {
+          font-size: 12px;
+          color: var(--text-muted);
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* ✅ 图片下方信息（你要的：用户名 + 点赞） */
+        .post-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          gap: 10px;
+        }
+
+        .user {
           display: flex;
           align-items: center;
           gap: 8px;
+          min-width: 0;
         }
-        .author-avatar {
-          width: 24px;
-          height: 24px;
+        .avatar {
+          width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: #000;
+          font-weight: 800;
+          font-size: 11px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .name {
+          font-size: 13px;
+          color: var(--text-primary);
+          font-weight: 600;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .like {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 13px;
+          color: var(--text-muted);
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        /* 空状态 */
+        .empty-state {
+          text-align: center;
+          padding: 80px 20px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+        }
+        .empty-icon {
+          font-size: 56px;
+          margin-bottom: 16px;
+        }
+        .empty-state h3 {
+          font-size: 18px;
+          color: var(--text-primary);
+          margin-bottom: 8px;
+        }
+        .empty-state p {
+          color: var(--text-muted);
+          margin-bottom: 20px;
+        }
+        .empty-btn {
+          display: inline-block;
+          padding: 12px 28px;
+          background: var(--accent);
+          color: #000;
+          font-weight: 700;
+          border-radius: 999px;
+          text-decoration: none;
+          transition: transform 0.2s;
+        }
+        .empty-btn:hover {
+          transform: scale(1.05);
+        }
+
+        /* 悬浮发布按钮 */
+        .fab {
+          position: fixed;
+          bottom: 28px;
+          right: 28px;
+          width: 56px;
+          height: 56px;
           border-radius: 50%;
           background: linear-gradient(135deg, #f59e0b, #d97706);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 11px;
-          font-weight: 600;
+          font-size: 32px;
+          font-weight: 300;
           color: #000;
-        }
-        .author-name {
-          font-size: 12px;
-          color: var(--text-muted);
-        }
-        .card-stats {
-          font-size: 12px;
-          color: var(--text-muted);
-        }
-
-        /* Empty State */
-        .empty-feed {
-          text-align: center;
-          padding: 80px 20px;
-          background: var(--bg-card);
-          border-radius: 16px;
-          border: 1px solid var(--border-color);
-        }
-        .empty-icon {
-          font-size: 64px;
-          margin-bottom: 16px;
-        }
-        .empty-feed h3 {
-          font-size: 20px;
-          margin-bottom: 8px;
-        }
-        .empty-feed p {
-          color: var(--text-muted);
-          margin-bottom: 24px;
-        }
-
-        /* Leagues Grid */
-        .leagues-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .league-card {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          background: var(--bg-card);
-          border: 1px solid var(--border-color);
-          border-radius: 16px;
-          padding: 20px;
           text-decoration: none;
-          color: inherit;
+          box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
           transition: all 0.2s;
+          z-index: 100;
         }
-        .league-card:hover {
-          border-color: var(--accent);
-          transform: translateX(4px);
-        }
-        .league-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          background: var(--bg-secondary);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-        }
-        .league-info {
-          flex: 1;
-        }
-        .league-name {
-          font-size: 16px;
-          font-weight: 600;
-          margin-bottom: 4px;
-        }
-        .league-meta {
-          display: flex;
-          gap: 12px;
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-        .league-badge {
-          color: var(--accent);
-        }
-        .league-arrow {
-          font-size: 20px;
-          color: var(--text-muted);
+        .fab:hover {
+          transform: scale(1.1);
+          box-shadow: 0 6px 28px rgba(245, 158, 11, 0.5);
         }
 
-        @media (max-width: 640px) {
-          .hero-title {
-            font-size: 28px;
+        /* 桌面响应式（仍然不考虑手机，但可适配小屏幕窗口） */
+        @media (max-width: 1100px) {
+          .grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
-          .hero-stats {
-            gap: 24px;
-          }
-          .stat-number {
-            font-size: 24px;
-          }
-          .masonry-grid {
-            gap: 12px;
+        }
+        @media (max-width: 860px) {
+          .grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
       `}</style>

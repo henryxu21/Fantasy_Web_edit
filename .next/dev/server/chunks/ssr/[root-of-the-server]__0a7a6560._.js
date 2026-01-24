@@ -24,11 +24,11 @@ __turbopack_context__.s([
     "supabase",
     ()=>supabase
 ]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@supabase/supabase-js/dist/index.mjs [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/fantasy-web/node_modules/@supabase/supabase-js/dist/index.mjs [app-ssr] (ecmascript) <locals>");
 ;
 const supabaseUrl = ("TURBOPACK compile-time value", "https://yjdlllhntfxvgvjgdnsw.supabase.co");
 const supabaseAnonKey = ("TURBOPACK compile-time value", "sb_publishable_CU0R3BJg1YnxAYcLlwwNfw_NI6cHvnP");
-const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
+const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
 }),
 "[project]/fantasy-web/lib/players-data.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -7741,7 +7741,9 @@ __turbopack_context__.s([
     "updateDraft",
     ()=>updateDraft,
     "updatePlayerRanking",
-    ()=>updatePlayerRanking
+    ()=>updatePlayerRanking,
+    "uploadImage",
+    ()=>uploadImage
 ]);
 // lib/store.ts
 /* =========================================================
@@ -7869,6 +7871,34 @@ async function getUserByUsername(username) {
     if (error) return null;
     return data;
 }
+async function uploadImage(file, folder = "images") {
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    // 生成唯一文件名
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `${folder}/${user.id}_${Date.now()}.${ext}`;
+    // 上传到 Supabase Storage
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false
+    });
+    if (error) {
+        console.error("Upload error:", error);
+        return {
+            ok: false,
+            error: error.message
+        };
+    }
+    // 获取公开 URL
+    const { data: urlData } = __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").getPublicUrl(data.path);
+    return {
+        ok: true,
+        url: urlData.publicUrl
+    };
+}
 async function listInsights() {
     const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`*, author:users(id, name, username, avatar_url)`).order("created_at", {
         ascending: false
@@ -7894,6 +7924,8 @@ async function createInsight(input) {
         title: input.title.trim(),
         body: input.body.trim(),
         league_slug: input.league_slug,
+        cover_url: input.cover_url,
+        tags: input.tags,
         author_id: user.id,
         heat: Math.floor(80 + Math.random() * 200)
     }).select(`*, author:users(id, name, username, avatar_url)`).single();

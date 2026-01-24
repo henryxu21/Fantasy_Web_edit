@@ -24,11 +24,11 @@ __turbopack_context__.s([
     "supabase",
     ()=>supabase
 ]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/@supabase/supabase-js/dist/index.mjs [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/fantasy-web/node_modules/@supabase/supabase-js/dist/index.mjs [app-ssr] (ecmascript) <locals>");
 ;
 const supabaseUrl = ("TURBOPACK compile-time value", "https://yjdlllhntfxvgvjgdnsw.supabase.co");
 const supabaseAnonKey = ("TURBOPACK compile-time value", "sb_publishable_CU0R3BJg1YnxAYcLlwwNfw_NI6cHvnP");
-const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
+const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey);
 }),
 "[project]/fantasy-web/lib/players-data.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -7741,7 +7741,9 @@ __turbopack_context__.s([
     "updateDraft",
     ()=>updateDraft,
     "updatePlayerRanking",
-    ()=>updatePlayerRanking
+    ()=>updatePlayerRanking,
+    "uploadImage",
+    ()=>uploadImage
 ]);
 // lib/store.ts
 /* =========================================================
@@ -7869,6 +7871,34 @@ async function getUserByUsername(username) {
     if (error) return null;
     return data;
 }
+async function uploadImage(file, folder = "images") {
+    const user = getSessionUser();
+    if (!user) return {
+        ok: false,
+        error: "Login required"
+    };
+    // 生成唯一文件名
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `${folder}/${user.id}_${Date.now()}.${ext}`;
+    // 上传到 Supabase Storage
+    const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false
+    });
+    if (error) {
+        console.error("Upload error:", error);
+        return {
+            ok: false,
+            error: error.message
+        };
+    }
+    // 获取公开 URL
+    const { data: urlData } = __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].storage.from("images").getPublicUrl(data.path);
+    return {
+        ok: true,
+        url: urlData.publicUrl
+    };
+}
 async function listInsights() {
     const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("insights").select(`*, author:users(id, name, username, avatar_url)`).order("created_at", {
         ascending: false
@@ -7894,6 +7924,8 @@ async function createInsight(input) {
         title: input.title.trim(),
         body: input.body.trim(),
         league_slug: input.league_slug,
+        cover_url: input.cover_url,
+        tags: input.tags,
         author_id: user.id,
         heat: Math.floor(80 + Math.random() * 200)
     }).select(`*, author:users(id, name, username, avatar_url)`).single();
@@ -8589,6 +8621,7 @@ function NewInsightPage() {
     const [tags, setTags] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [tagInput, setTagInput] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
     const [coverFile, setCoverFile] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [coverPreview, setCoverPreview] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const coverInputRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
     const [submitting, setSubmitting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -8606,6 +8639,19 @@ function NewInsightPage() {
             }
         })();
     }, []);
+    // 处理封面图片选择，生成预览
+    function handleCoverChange(file) {
+        setCoverFile(file);
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = ()=>{
+                setCoverPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setCoverPreview(null);
+        }
+    }
     const leagueSelectDisabled = (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>submitting || loadingLeagues || leagues.length === 0, [
         submitting,
         loadingLeagues,
@@ -8638,17 +8684,36 @@ function NewInsightPage() {
         }
         setSubmitting(true);
         setError(null);
-        const res = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createInsight"])({
-            title,
-            body,
-            league_slug: leagueSlug ? leagueSlug : undefined
-        });
-        if (!res.ok) {
+        try {
+            // 1. 如果有封面图片，先上传
+            let coverUrl;
+            if (coverFile) {
+                const uploadRes = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["uploadImage"])(coverFile, "covers");
+                if (!uploadRes.ok) {
+                    setError(uploadRes.error ?? "图片上传失败");
+                    setSubmitting(false);
+                    return;
+                }
+                coverUrl = uploadRes.url;
+            }
+            // 2. 创建 insight
+            const res = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$lib$2f$store$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createInsight"])({
+                title,
+                body,
+                league_slug: leagueSlug ? leagueSlug : undefined,
+                cover_url: coverUrl,
+                tags: tags.length > 0 ? tags : undefined
+            });
+            if (!res.ok) {
+                setSubmitting(false);
+                setError(res.error ?? "发布失败");
+                return;
+            }
+            router.push("/");
+        } catch (err) {
+            setError("发布失败，请重试");
             setSubmitting(false);
-            setError(res.error ?? "发布失败");
-            return;
         }
-        router.push("/");
     }
     const POPULAR_TAGS = [
         "选秀策略",
@@ -8662,7 +8727,7 @@ function NewInsightPage() {
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$components$2f$Header$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                 fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                lineNumber: 95,
+                lineNumber: 130,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -8678,7 +8743,7 @@ function NewInsightPage() {
                                     children: "发布洞见"
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 99,
+                                    lineNumber: 134,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8686,13 +8751,13 @@ function NewInsightPage() {
                                     children: "分享你的 Fantasy 篮球策略和分析"
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 100,
+                                    lineNumber: 135,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                            lineNumber: 98,
+                            lineNumber: 133,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8710,13 +8775,13 @@ function NewInsightPage() {
                                                     children: "(可选)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 106,
+                                                    lineNumber: 141,
                                                     columnNumber: 48
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 106,
+                                            lineNumber: 141,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -8726,53 +8791,102 @@ function NewInsightPage() {
                                             style: {
                                                 display: 'none'
                                             },
-                                            onChange: (e)=>setCoverFile(e.target.files?.[0] ?? null),
+                                            onChange: (e)=>handleCoverChange(e.target.files?.[0] ?? null),
                                             disabled: submitting
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 107,
+                                            lineNumber: 142,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                             type: "button",
                                             onClick: ()=>coverInputRef.current?.click(),
                                             disabled: submitting,
-                                            style: styles.uploadBox,
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    style: styles.uploadIcon,
-                                                    children: "🖼"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 121,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    style: styles.uploadText,
-                                                    children: coverFile ? `已选择：${coverFile.name}` : "点击上传封面图"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 122,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    style: styles.uploadHint,
-                                                    children: "推荐尺寸 16:9，最大 5MB"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 125,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
+                                            style: {
+                                                ...styles.uploadBox,
+                                                ...coverPreview ? {
+                                                    padding: 0,
+                                                    overflow: 'hidden'
+                                                } : {}
+                                            },
+                                            children: coverPreview ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                style: styles.previewContainer,
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("img", {
+                                                        src: coverPreview,
+                                                        alt: "预览",
+                                                        style: styles.previewImage
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                        lineNumber: 161,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        style: styles.previewOverlay,
+                                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                            children: "点击更换图片"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                            lineNumber: 163,
+                                                            columnNumber: 23
+                                                        }, this)
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                        lineNumber: 162,
+                                                        columnNumber: 21
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                lineNumber: 160,
+                                                columnNumber: 19
+                                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        style: styles.uploadIcon,
+                                                        children: "🖼"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                        lineNumber: 168,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        style: styles.uploadText,
+                                                        children: "点击上传封面图"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                        lineNumber: 169,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        style: styles.uploadHint,
+                                                        children: "推荐尺寸 16:9，最大 5MB"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                                        lineNumber: 170,
+                                                        columnNumber: 21
+                                                    }, this)
+                                                ]
+                                            }, void 0, true)
+                                        }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 115,
+                                            lineNumber: 150,
                                             columnNumber: 15
+                                        }, this),
+                                        coverFile && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            onClick: ()=>handleCoverChange(null),
+                                            style: styles.removeCoverBtn,
+                                            children: "移除封面"
+                                        }, void 0, false, {
+                                            fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
+                                            lineNumber: 175,
+                                            columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 105,
+                                    lineNumber: 140,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -8787,13 +8901,13 @@ function NewInsightPage() {
                                                     children: "*"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 131,
+                                                    lineNumber: 187,
                                                     columnNumber: 46
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 131,
+                                            lineNumber: 187,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -8805,7 +8919,7 @@ function NewInsightPage() {
                                             maxLength: 100
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 132,
+                                            lineNumber: 188,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8816,13 +8930,13 @@ function NewInsightPage() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 140,
+                                            lineNumber: 196,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 130,
+                                    lineNumber: 186,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -8837,13 +8951,13 @@ function NewInsightPage() {
                                                     children: "*"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 145,
+                                                    lineNumber: 201,
                                                     columnNumber: 46
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 145,
+                                            lineNumber: 201,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -8855,13 +8969,13 @@ function NewInsightPage() {
                                             style: styles.textarea
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 146,
+                                            lineNumber: 202,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 144,
+                                    lineNumber: 200,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -8876,13 +8990,13 @@ function NewInsightPage() {
                                                     children: "(最多9张)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 158,
+                                                    lineNumber: 214,
                                                     columnNumber: 48
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 158,
+                                            lineNumber: 214,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8899,7 +9013,7 @@ function NewInsightPage() {
                                                         children: "+"
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                        lineNumber: 161,
+                                                        lineNumber: 217,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8910,24 +9024,24 @@ function NewInsightPage() {
                                                         children: "添加图片"
                                                     }, void 0, false, {
                                                         fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                        lineNumber: 162,
+                                                        lineNumber: 218,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                lineNumber: 160,
+                                                lineNumber: 216,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 159,
+                                            lineNumber: 215,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 157,
+                                    lineNumber: 213,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -8942,13 +9056,13 @@ function NewInsightPage() {
                                                     children: "(最多5个)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 169,
+                                                    lineNumber: 225,
                                                     columnNumber: 46
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 169,
+                                            lineNumber: 225,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8972,7 +9086,7 @@ function NewInsightPage() {
                                                     }
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 171,
+                                                    lineNumber: 227,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8986,13 +9100,13 @@ function NewInsightPage() {
                                                     children: "添加"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 185,
+                                                    lineNumber: 241,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 170,
+                                            lineNumber: 226,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9013,18 +9127,18 @@ function NewInsightPage() {
                                                             children: "×"
                                                         }, void 0, false, {
                                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                            lineNumber: 204,
+                                                            lineNumber: 260,
                                                             columnNumber: 26
                                                         }, this)
                                                     ]
                                                 }, t, true, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 198,
+                                                    lineNumber: 254,
                                                     columnNumber: 19
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 196,
+                                            lineNumber: 252,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9035,7 +9149,7 @@ function NewInsightPage() {
                                                     children: "热门标签："
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 211,
+                                                    lineNumber: 267,
                                                     columnNumber: 17
                                                 }, this),
                                                 POPULAR_TAGS.map((t)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -9049,19 +9163,19 @@ function NewInsightPage() {
                                                         ]
                                                     }, t, true, {
                                                         fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                        lineNumber: 213,
+                                                        lineNumber: 269,
                                                         columnNumber: 19
                                                     }, this))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 210,
+                                            lineNumber: 266,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 168,
+                                    lineNumber: 224,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -9076,13 +9190,13 @@ function NewInsightPage() {
                                                     children: "(可选)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 228,
+                                                    lineNumber: 284,
                                                     columnNumber: 48
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 228,
+                                            lineNumber: 284,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9099,7 +9213,7 @@ function NewInsightPage() {
                                                             children: loadingLeagues ? "加载中…" : leagues.length === 0 ? "暂无联赛" : "不关联联赛"
                                                         }, void 0, false, {
                                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                            lineNumber: 236,
+                                                            lineNumber: 292,
                                                             columnNumber: 19
                                                         }, this),
                                                         leagues.map((l)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -9107,13 +9221,13 @@ function NewInsightPage() {
                                                                 children: l.name
                                                             }, l.slug, false, {
                                                                 fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                                lineNumber: 240,
+                                                                lineNumber: 296,
                                                                 columnNumber: 21
                                                             }, this))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 230,
+                                                    lineNumber: 286,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -9121,19 +9235,19 @@ function NewInsightPage() {
                                                     children: "▾"
                                                 }, void 0, false, {
                                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                                    lineNumber: 243,
+                                                    lineNumber: 299,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 229,
+                                            lineNumber: 285,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 227,
+                                    lineNumber: 283,
                                     columnNumber: 13
                                 }, this),
                                 error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9141,7 +9255,7 @@ function NewInsightPage() {
                                     children: error
                                 }, void 0, false, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 248,
+                                    lineNumber: 304,
                                     columnNumber: 23
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9155,7 +9269,7 @@ function NewInsightPage() {
                                             children: "取消"
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 252,
+                                            lineNumber: 308,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$fantasy$2d$web$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -9166,36 +9280,36 @@ function NewInsightPage() {
                                             children: submitting ? "发布中…" : "发布"
                                         }, void 0, false, {
                                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                            lineNumber: 260,
+                                            lineNumber: 316,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                                    lineNumber: 251,
+                                    lineNumber: 307,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                            lineNumber: 103,
+                            lineNumber: 138,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                    lineNumber: 97,
+                    lineNumber: 132,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-                lineNumber: 96,
+                lineNumber: 131,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/fantasy-web/app/insights/new/page.tsx",
-        lineNumber: 94,
+        lineNumber: 129,
         columnNumber: 5
     }, this);
 }
@@ -9269,6 +9383,38 @@ const styles = {
         color: 'rgba(255,255,255,0.4)',
         fontSize: 12,
         marginTop: 4
+    },
+    previewContainer: {
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '16/9'
+    },
+    previewImage: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover'
+    },
+    previewOverlay: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0,
+        transition: 'opacity 0.2s',
+        color: '#fff',
+        fontSize: 14
+    },
+    removeCoverBtn: {
+        marginTop: 8,
+        padding: '6px 12px',
+        background: 'transparent',
+        border: '1px solid rgba(255,255,255,0.2)',
+        borderRadius: 6,
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 12,
+        cursor: 'pointer'
     },
     input: {
         width: '100%',

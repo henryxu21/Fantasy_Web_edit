@@ -44,20 +44,10 @@ export default function InsightDetailPage() {
       const raw = await getInsightById(id);
           
       if (raw) {
-        let content = raw.body;
-        let coverImage: string | undefined;
-        let images: string[] | undefined;
-        let tags: string[] | undefined;
-        
-        try {
-          const parsed = JSON.parse(raw.body);
-          if (parsed.content) {
-            content = parsed.content;
-            coverImage = parsed.metadata?.coverImage;
-            images = parsed.metadata?.images;
-            tags = parsed.metadata?.tags;
-          }
-        } catch { }
+        // 直接使用数据库字段，不再从 body 解析 JSON
+        const coverImage = (raw as any).cover_url;
+        const tags = (raw as any).tags;
+        const content = raw.body;
 
         const authorName = typeof raw.author === 'object' ? (raw.author as any)?.username || (raw.author as any)?.name : raw.author;
         const createdAtNum = typeof (raw as any).created_at === 'string' ? new Date((raw as any).created_at).getTime() : ((raw as any).createdAt || Date.now());
@@ -67,7 +57,6 @@ export default function InsightDetailPage() {
           title: raw.title,
           content,
           coverImage,
-          images,
           tags,
           author: authorName || 'Unknown',
           createdAt: createdAtNum,
@@ -350,60 +339,45 @@ export default function InsightDetailPage() {
 
         {/* Comments Section */}
         <section className="comments-section">
-          <h3 className="comments-title">
-            {t("评论", "Comments")} ({comments.length})
-          </h3>
-
+          <h2 className="comments-title">{t("评论", "Comments")} ({comments.length})</h2>
+          
           <form className="comment-form" onSubmit={handleComment}>
             <div className="comment-input-wrapper">
-              {user ? (
-                <div className="comment-avatar">{user.name[0]?.toUpperCase()}</div>
-              ) : (
-                <div className="comment-avatar">?</div>
-              )}
               <textarea
                 id="comment-input"
                 className="comment-input"
+                placeholder={user ? t("写下你的评论...", "Write a comment...") : t("请登录后评论", "Login to comment")}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder={user ? t("写下你的评论...", "Write a comment...") : t("请先登录后评论", "Please login to comment")}
                 disabled={!user}
                 rows={3}
               />
             </div>
-            <div className="comment-submit">
-              <button 
-                type="submit" 
-                className="btn btn-primary"
-                disabled={!user || !newComment.trim()}
-              >
-                {t("发表评论", "Post Comment")}
-              </button>
-            </div>
+            {user && (
+              <div className="comment-submit">
+                <button type="submit" className="btn btn-primary" disabled={!newComment.trim()}>
+                  {t("发表", "Submit")}
+                </button>
+              </div>
+            )}
           </form>
 
           <div className="comments-list">
             {comments.length === 0 ? (
-              <div className="no-comments">
-                <p>{t("暂无评论，来发表第一条评论吧！", "No comments yet. Be the first to comment!")}</p>
-              </div>
+              <p className="no-comments">{t("还没有评论，来说两句吧~", "No comments yet. Be the first!")}</p>
             ) : (
-              comments.map(comment => {
-                const commentAuthor = getCommentAuthor(comment);
-                const commentDate = getCommentDate(comment);
-                return (
-                  <div key={comment.id} className="comment-item">
-                    <div className="comment-avatar">{(commentAuthor || '?')[0]?.toUpperCase()}</div>
-                    <div className="comment-content">
-                      <div className="comment-header">
-                        <span className="comment-author">{commentAuthor}</span>
-                        <span className="comment-date">{formatDate(commentDate)}</span>
-                      </div>
-                      <p className="comment-body">{comment.body}</p>
+              comments.map((comment, index) => (
+                <div key={comment.id || index} className="comment-item">
+                  <div className="comment-avatar">{getCommentAuthor(comment)[0]?.toUpperCase()}</div>
+                  <div className="comment-content">
+                    <div className="comment-header">
+                      <span className="comment-author">{getCommentAuthor(comment)}</span>
+                      <span className="comment-date">{formatDate(getCommentDate(comment))}</span>
                     </div>
+                    <p className="comment-body">{comment.body}</p>
                   </div>
-                );
-              })
+                </div>
+              ))
             )}
           </div>
         </section>
@@ -411,39 +385,37 @@ export default function InsightDetailPage() {
 
       <style jsx>{`
         .insight-detail {
-          max-width: 800px;
+          max-width: 720px;
           margin: 0 auto;
-          padding: 0 20px 60px;
+          padding: 20px 16px 80px;
         }
         .cover-image {
           width: 100%;
-          margin-bottom: 24px;
-          border-radius: 12px;
+          border-radius: 16px;
           overflow: hidden;
+          margin-bottom: 24px;
           cursor: pointer;
         }
         .cover-image img {
           width: 100%;
           height: auto;
           display: block;
-          transition: transform 0.3s;
-        }
-        .cover-image:hover img {
-          transform: scale(1.02);
         }
         .insight-content {
           background: var(--bg-card);
           border: 1px solid var(--border-color);
-          border-radius: 12px;
-          padding: 32px;
+          border-radius: 16px;
+          padding: 24px;
+          margin-bottom: 24px;
+        }
+        .insight-header {
           margin-bottom: 24px;
         }
         .insight-title {
-          font-size: 28px;
+          font-size: 24px;
           font-weight: 700;
-          margin-bottom: 16px;
           line-height: 1.3;
-          flex: 1;
+          margin-bottom: 16px;
         }
         .delete-btn {
           background: none;
