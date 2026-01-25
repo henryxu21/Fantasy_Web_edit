@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import { useLang } from "@/lib/lang";
@@ -12,11 +12,45 @@ import {
   isLeagueMember,
   joinLeague,
   leaveLeague,
-  listInsights,
   League,
   LeagueMember,
-  Insight,
 } from "@/lib/store";
+
+// 联赛内部导航组件
+function LeagueNav({ slug, isOwner }: { slug: string; isOwner: boolean }) {
+  const { t } = useLang();
+  const pathname = usePathname();
+  
+  const mainNav = [
+    { href: `/league/${slug}`, label: t("联赛主页", "League Home"), icon: "🏠" },
+    { href: `/league/${slug}/standings`, label: t("排行榜", "Standings"), icon: "🏆" },
+    { href: `/league/${slug}/scoreboard`, label: t("记分板", "Scoreboard"), icon: "📊" },
+    { href: `/league/${slug}/schedule`, label: t("赛程表", "Schedule"), icon: "📅" },
+    { href: `/league/${slug}/board`, label: t("讨论区", "Message Board"), icon: "💬" },
+    { href: `/league/${slug}/members`, label: t("成员", "Members"), icon: "👥" },
+  ];
+
+  if (isOwner) {
+    mainNav.push({ href: `/league/${slug}/settings`, label: t("设置", "Settings"), icon: "⚙️" });
+  }
+
+  return (
+    <nav className="league-nav">
+      <div className="league-nav-inner">
+        {mainNav.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`league-nav-link ${pathname === item.href ? "active" : ""}`}
+          >
+            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-label">{item.label}</span>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
 
 export default function LeagueDetailPage() {
   const { t } = useLang();
@@ -27,10 +61,10 @@ export default function LeagueDetailPage() {
   const [user, setUser] = useState<ReturnType<typeof getSessionUser>>(null);
   const [league, setLeague] = useState<League | null>(null);
   const [members, setMembers] = useState<LeagueMember[]>([]);
-  const [insights, setInsights] = useState<Insight[]>([]);
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [announcement, setAnnouncement] = useState("欢迎来到联赛！准备好开始你的 Fantasy 篮球之旅了吗？");
 
   useEffect(() => {
     setUser(getSessionUser());
@@ -46,20 +80,11 @@ export default function LeagueDetailPage() {
 
     setLeague(leagueData);
 
-    // 加载成员
     const membersData = await getLeagueMembers(leagueData.id);
     setMembers(membersData);
 
-    // 检查当前用户是否是成员
     const memberStatus = await isLeagueMember(leagueData.id);
     setIsMember(memberStatus);
-
-    // 加载联赛相关的帖子
-    const allInsights = await listInsights();
-    const leagueInsights = allInsights.filter(
-      (i) => i.league_slug === slug
-    );
-    setInsights(leagueInsights);
 
     setLoading(false);
   }
@@ -76,7 +101,6 @@ export default function LeagueDetailPage() {
 
     if (res.ok) {
       setIsMember(true);
-      // 重新加载成员列表
       const membersData = await getLeagueMembers(league!.id);
       setMembers(membersData);
     } else {
@@ -97,8 +121,6 @@ export default function LeagueDetailPage() {
       setIsMember(false);
       const membersData = await getLeagueMembers(league!.id);
       setMembers(membersData);
-    } else {
-      alert(res.error || t("退出失败", "Failed to leave"));
     }
     setJoining(false);
   }
@@ -115,12 +137,20 @@ export default function LeagueDetailPage() {
     return new Date(dateStr).toLocaleDateString();
   };
 
+  // 模拟最近动态
+  const recentActivities = [
+    { id: 1, type: "join", content: "h75yin 加入了联赛", time: "2小时前" },
+    { id: 2, type: "message", content: "abcd 在讨论区发布了新帖子", time: "5小时前" },
+    { id: 3, type: "settings", content: "联赛设置已更新", time: "1天前" },
+  ];
+
   if (loading) {
     return (
       <div className="app">
         <Header />
-        <main className="league-detail-page">
+        <main className="league-page">
           <div className="loading">
+            <div className="loading-icon">🏀</div>
             <p>{t("加载中...", "Loading...")}</p>
           </div>
         </main>
@@ -133,11 +163,10 @@ export default function LeagueDetailPage() {
     return (
       <div className="app">
         <Header />
-        <main className="league-detail-page">
+        <main className="league-page">
           <div className="not-found">
             <div className="icon">😕</div>
             <h2>{t("联赛不存在", "League Not Found")}</h2>
-            <p>{t("该联赛可能已被删除", "This league may have been deleted")}</p>
             <Link href="/league" className="back-btn">
               {t("返回联赛列表", "Back to Leagues")}
             </Link>
@@ -151,159 +180,224 @@ export default function LeagueDetailPage() {
   return (
     <div className="app">
       <Header />
-      <main className="league-detail-page">
-        <div className="container">
-          {/* 联赛头部 */}
-          <div className="league-header">
-            <div className="header-content">
-              <div className="league-icon">🏆</div>
-              <div className="league-info">
-                <h1>{league.name}</h1>
-                <div className="league-meta">
-                  <span className="badge">
-                    {league.visibility === "public" ? t("公开", "Public") : t("私密", "Private")}
-                  </span>
-                  <span className="members-count">
-                    👥 {members.length} {t("成员", "members")}
-                  </span>
-                  <span className="date">
-                    {t("创建于", "Created")} {formatDate(league.created_at)}
-                  </span>
+      
+      {/* 联赛头部 */}
+      <div className="league-header">
+        <div className="league-header-inner">
+          <div className="league-info">
+            <div className="league-icon">🏆</div>
+            <div className="league-details">
+              <h1>{league.name}</h1>
+              <div className="league-meta">
+                <span className="badge">{league.visibility === "public" ? t("公开", "Public") : t("私密", "Private")}</span>
+                <span className="meta-item">👥 {members.length}/{(league as any).max_teams || 10} {t("队伍", "teams")}</span>
+                <span className="meta-item">📅 {(league as any).season_year || 2025} {t("赛季", "Season")}</span>
+                <span className="meta-item status">{t("准备中", "Pre-Draft")}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="league-actions">
+            {!isMember ? (
+              <button className="action-btn join" onClick={handleJoin} disabled={joining}>
+                {joining ? t("加入中...", "Joining...") : t("加入联赛", "Join League")}
+              </button>
+            ) : isOwner ? (
+              <Link href={`/league/${slug}/settings`} className="action-btn settings">
+                ⚙️ {t("管理联赛", "Manage")}
+              </Link>
+            ) : (
+              <button className="action-btn leave" onClick={handleLeave} disabled={joining}>
+                {t("退出联赛", "Leave")}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 联赛导航 */}
+      <LeagueNav slug={slug} isOwner={!!isOwner} />
+
+      <main className="league-page">
+        <div className="league-container">
+          <div className="content-grid">
+            {/* 左侧主内容 */}
+            <div className="main-content">
+              {/* 联赛公告 */}
+              <div className="card announcement-card">
+                <div className="card-header">
+                  <h3>📢 {t("联赛公告", "League Announcement")}</h3>
+                  {isOwner && (
+                    <button className="edit-btn">{t("编辑", "Edit")}</button>
+                  )}
+                </div>
+                <div className="card-body">
+                  <p>{announcement}</p>
+                </div>
+              </div>
+
+              {/* 快捷入口 */}
+              {isMember && (
+                <div className="quick-actions">
+                  <Link href={`/league/${slug}/team`} className="quick-action-card">
+                    <span className="qa-icon">🏀</span>
+                    <span className="qa-title">{t("我的球队", "My Team")}</span>
+                    <span className="qa-desc">{t("管理阵容", "Manage roster")}</span>
+                  </Link>
+                  <Link href={`/league/${slug}/players`} className="quick-action-card">
+                    <span className="qa-icon">➕</span>
+                    <span className="qa-title">{t("添加球员", "Add Players")}</span>
+                    <span className="qa-desc">{t("自由球员市场", "Free agents")}</span>
+                  </Link>
+                  <Link href={`/league/${slug}/draft`} className="quick-action-card">
+                    <span className="qa-icon">📋</span>
+                    <span className="qa-title">{t("选秀大厅", "Draft Lobby")}</span>
+                    <span className="qa-desc">{t("即将开始", "Coming soon")}</span>
+                  </Link>
+                  <Link href={`/league/${slug}/board`} className="quick-action-card">
+                    <span className="qa-icon">💬</span>
+                    <span className="qa-title">{t("讨论区", "Message Board")}</span>
+                    <span className="qa-desc">{t("与队友交流", "Chat with league")}</span>
+                  </Link>
+                </div>
+              )}
+
+              {/* 最近动态 */}
+              <div className="card">
+                <div className="card-header">
+                  <h3>📰 {t("最近动态", "Recent Activity")}</h3>
+                  <Link href={`/league/${slug}/activity`} className="view-all">
+                    {t("查看全部", "View All")} →
+                  </Link>
+                </div>
+                <div className="card-body">
+                  <div className="activity-list">
+                    {recentActivities.map((activity) => (
+                      <div key={activity.id} className="activity-item">
+                        <div className="activity-icon">
+                          {activity.type === "join" && "👤"}
+                          {activity.type === "message" && "💬"}
+                          {activity.type === "settings" && "⚙️"}
+                        </div>
+                        <div className="activity-content">
+                          <span className="activity-text">{activity.content}</span>
+                          <span className="activity-time">{activity.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="header-actions">
-              {!isMember ? (
-                <button
-                  className="join-btn"
-                  onClick={handleJoin}
-                  disabled={joining}
-                >
-                  {joining ? t("加入中...", "Joining...") : t("加入联赛", "Join League")}
-                </button>
-              ) : isOwner ? (
-                <span className="owner-badge">{t("创建者", "Owner")}</span>
-              ) : (
-                <button
-                  className="leave-btn"
-                  onClick={handleLeave}
-                  disabled={joining}
-                >
-                  {joining ? t("退出中...", "Leaving...") : t("退出联赛", "Leave")}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="content-grid">
-            {/* 左侧：成员列表 */}
-            <div className="members-section">
-              <h2>{t("成员", "Members")} ({members.length})</h2>
-              <div className="members-list">
-                {members.map((member) => {
-                  const name = getMemberName(member);
-                  return (
-                    <div key={member.id} className="member-item">
-                      <div className="member-avatar">
-                        {name[0]?.toUpperCase()}
-                      </div>
-                      <div className="member-info">
-                        <span className="member-name">{name}</span>
-                        {member.role === "owner" && (
-                          <span className="role-badge">{t("创建者", "Owner")}</span>
-                        )}
-                      </div>
-                      <span className="join-date">
-                        {formatDate(member.joined_at)}
-                      </span>
-                    </div>
-                  );
-                })}
-
-                {members.length === 0 && (
-                  <div className="no-members">
-                    <p>{t("还没有成员", "No members yet")}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 右侧：联赛帖子 */}
-            <div className="posts-section">
-              <div className="section-header">
-                <h2>{t("联赛动态", "League Posts")} ({insights.length})</h2>
-                {isMember && (
-                  <Link href={`/insights/new?league=${slug}`} className="new-post-btn">
-                    + {t("发布", "Post")}
+            {/* 右侧边栏 */}
+            <div className="sidebar">
+              {/* 排行榜预览 */}
+              <div className="card">
+                <div className="card-header">
+                  <h3>🏆 {t("排行榜", "Standings")}</h3>
+                  <Link href={`/league/${slug}/standings`} className="view-all">
+                    {t("查看", "View")} →
                   </Link>
-                )}
+                </div>
+                <div className="card-body">
+                  <div className="standings-preview">
+                    {members.slice(0, 5).map((member, index) => {
+                      const name = getMemberName(member);
+                      return (
+                        <div key={member.id} className="standing-row">
+                          <span className="rank">{index + 1}</span>
+                          <div className="team-info">
+                            <span className="team-avatar">{name[0]?.toUpperCase()}</span>
+                            <span className="team-name">{name}</span>
+                          </div>
+                          <span className="record">0-0</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
-              <div className="posts-list">
-                {insights.length === 0 ? (
-                  <div className="no-posts">
-                    <div className="icon">📝</div>
-                    <p>{t("还没有帖子", "No posts yet")}</p>
-                    {isMember && (
-                      <Link href={`/insights/new?league=${slug}`} className="post-btn">
-                        {t("发布第一篇", "Create First Post")}
-                      </Link>
-                    )}
+              {/* 成员列表 */}
+              <div className="card">
+                <div className="card-header">
+                  <h3>👥 {t("成员", "Members")} ({members.length})</h3>
+                  <Link href={`/league/${slug}/members`} className="view-all">
+                    {t("查看", "View")} →
+                  </Link>
+                </div>
+                <div className="card-body">
+                  <div className="members-preview">
+                    {members.map((member) => {
+                      const name = getMemberName(member);
+                      return (
+                        <div key={member.id} className="member-row">
+                          <span className="member-avatar">{name[0]?.toUpperCase()}</span>
+                          <span className="member-name">{name}</span>
+                          {member.role === "owner" && (
+                            <span className="owner-badge">👑</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : (
-                  insights.map((insight) => (
-                    <Link
-                      href={`/insights/${insight.id}`}
-                      key={insight.id}
-                      className="post-item"
-                    >
-                      <div className="post-content">
-                        <h3>{insight.title}</h3>
-                        <p>{insight.body?.slice(0, 100)}...</p>
-                      </div>
-                      <div className="post-meta">
-                        <span>❤️ {insight.heat || 0}</span>
-                        <span>{formatDate(insight.created_at)}</span>
-                      </div>
-                    </Link>
-                  ))
-                )}
+                </div>
+              </div>
+
+              {/* 联赛信息 */}
+              <div className="card">
+                <div className="card-header">
+                  <h3>ℹ️ {t("联赛信息", "League Info")}</h3>
+                </div>
+                <div className="card-body">
+                  <div className="info-list">
+                    <div className="info-row">
+                      <span className="info-label">{t("计分方式", "Scoring")}</span>
+                      <span className="info-value">{t("Head-to-Head", "H2H Categories")}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">{t("选秀类型", "Draft Type")}</span>
+                      <span className="info-value">{t("蛇形选秀", "Snake")}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">{t("阵容大小", "Roster Size")}</span>
+                      <span className="info-value">13</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">{t("创建时间", "Created")}</span>
+                      <span className="info-value">{formatDate(league.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </main>
+
       <style jsx>{styles}</style>
     </div>
   );
 }
 
 const styles = `
-  .league-detail-page {
-    min-height: 100vh;
-    background: #0a0a0a;
-    padding: 24px 16px;
-  }
-
-  .container {
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-
   /* 联赛头部 */
   .league-header {
+    background: linear-gradient(135deg, #1a237e 0%, #0d1442 100%);
+    border-bottom: 1px solid #283593;
+  }
+
+  .league-header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 24px;
-    background: linear-gradient(135deg, #1a237e 0%, #0d1442 100%);
-    border: 1px solid #283593;
-    border-radius: 16px;
-    margin-bottom: 24px;
   }
 
-  .header-content {
+  .league-info {
     display: flex;
     align-items: center;
     gap: 20px;
@@ -311,8 +405,8 @@ const styles = `
 
   .league-icon {
     font-size: 48px;
-    width: 80px;
-    height: 80px;
+    width: 72px;
+    height: 72px;
     background: rgba(255,255,255,0.1);
     border-radius: 16px;
     display: flex;
@@ -320,11 +414,11 @@ const styles = `
     justify-content: center;
   }
 
-  .league-info h1 {
-    font-size: 28px;
+  .league-details h1 {
+    font-size: 24px;
     font-weight: 700;
     color: #fff;
-    margin: 0 0 12px 0;
+    margin: 0 0 8px 0;
   }
 
   .league-meta {
@@ -339,252 +433,399 @@ const styles = `
     background: rgba(34, 197, 94, 0.2);
     color: #22c55e;
     border-radius: 12px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
   }
 
-  .members-count, .date {
+  .meta-item {
     font-size: 14px;
     color: #90caf9;
   }
 
-  .header-actions {
-    display: flex;
-    gap: 12px;
+  .meta-item.status {
+    padding: 4px 12px;
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border-radius: 12px;
   }
 
-  .join-btn {
-    padding: 12px 28px;
-    background: #f59e0b;
+  .league-actions .action-btn {
+    padding: 12px 24px;
     border: none;
     border-radius: 24px;
-    color: #000;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
     transition: all 0.2s;
   }
 
-  .join-btn:hover:not(:disabled) {
-    background: #fbbf24;
-    transform: scale(1.05);
+  .action-btn.join {
+    background: #f59e0b;
+    color: #000;
   }
 
-  .join-btn:disabled {
+  .action-btn.join:hover:not(:disabled) {
+    background: #fbbf24;
+  }
+
+  .action-btn.settings {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .action-btn.leave {
+    background: transparent;
+    color: #888;
+    border: 1px solid #444;
+  }
+
+  .action-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
 
-  .leave-btn {
-    padding: 12px 24px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 24px;
+  /* 联赛导航 */
+  .league-nav {
+    background: #111;
+    border-bottom: 1px solid #222;
+    position: sticky;
+    top: 60px;
+    z-index: 40;
+  }
+
+  .league-nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    gap: 4px;
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+
+  .league-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 16px;
+    color: #888;
+    text-decoration: none;
+    font-size: 14px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .league-nav-link:hover {
     color: #fff;
-    font-size: 14px;
-    cursor: pointer;
+    background: rgba(255,255,255,0.05);
   }
 
-  .leave-btn:hover:not(:disabled) {
-    border-color: #ef4444;
-    color: #ef4444;
-  }
-
-  .owner-badge {
-    padding: 10px 20px;
-    background: rgba(245, 158, 11, 0.2);
-    border-radius: 24px;
+  .league-nav-link.active {
     color: #f59e0b;
-    font-size: 14px;
-    font-weight: 500;
+    border-bottom-color: #f59e0b;
   }
 
-  /* 内容区 */
+  .nav-icon {
+    font-size: 16px;
+  }
+
+  /* 主内容区 */
+  .league-page {
+    min-height: calc(100vh - 200px);
+    background: #0a0a0a;
+    padding: 24px 16px;
+  }
+
+  .league-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
   .content-grid {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 1fr 340px;
     gap: 24px;
   }
 
-  /* 成员区 */
-  .members-section {
+  /* 卡片样式 */
+  .card {
     background: #111;
     border: 1px solid #222;
-    border-radius: 16px;
-    padding: 20px;
-    height: fit-content;
+    border-radius: 12px;
+    margin-bottom: 16px;
   }
 
-  .members-section h2 {
-    font-size: 16px;
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #222;
+  }
+
+  .card-header h3 {
+    font-size: 15px;
     font-weight: 600;
     color: #fff;
-    margin: 0 0 16px 0;
+    margin: 0;
   }
 
-  .members-list {
+  .card-body {
+    padding: 16px 20px;
+  }
+
+  .view-all, .edit-btn {
+    font-size: 13px;
+    color: #f59e0b;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .view-all:hover, .edit-btn:hover {
+    text-decoration: underline;
+  }
+
+  /* 公告卡片 */
+  .announcement-card .card-body p {
+    color: #ccc;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* 快捷操作 */
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .quick-action-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 12px;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .quick-action-card:hover {
+    border-color: #f59e0b;
+    transform: translateY(-2px);
+  }
+
+  .qa-icon {
+    font-size: 28px;
+  }
+
+  .qa-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .qa-desc {
+    font-size: 12px;
+    color: #666;
+  }
+
+  /* 动态列表 */
+  .activity-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
-  .member-item {
+  .activity-item {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px;
     background: #1a1a1a;
-    border-radius: 10px;
+    border-radius: 8px;
   }
 
-  .member-avatar {
+  .activity-icon {
+    font-size: 20px;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: #000;
-    font-weight: 700;
-    font-size: 14px;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .member-info {
+  .activity-content {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .activity-text {
+    font-size: 14px;
+    color: #ccc;
+  }
+
+  .activity-time {
+    font-size: 12px;
+    color: #666;
+  }
+
+  /* 排行榜预览 */
+  .standings-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .standing-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: #1a1a1a;
+    border-radius: 8px;
+  }
+
+  .rank {
+    width: 24px;
+    height: 24px;
+    background: #333;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .standing-row:first-child .rank {
+    background: #f59e0b;
+    color: #000;
+  }
+
+  .team-info {
     flex: 1;
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .member-name {
-    font-size: 14px;
-    color: #fff;
-    font-weight: 500;
+  .team-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .role-badge {
-    padding: 2px 8px;
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    font-size: 11px;
+  .team-name {
+    font-size: 14px;
+    color: #fff;
+  }
+
+  .record {
+    font-size: 13px;
+    color: #888;
+  }
+
+  /* 成员预览 */
+  .members-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: #1a1a1a;
     border-radius: 8px;
   }
 
-  .join-date {
-    font-size: 12px;
-    color: #666;
-  }
-
-  .no-members {
-    text-align: center;
-    padding: 20px;
-    color: #666;
-  }
-
-  /* 帖子区 */
-  .posts-section {
-    background: #111;
-    border: 1px solid #222;
-    border-radius: 16px;
-    padding: 20px;
-  }
-
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-
-  .section-header h2 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-    margin: 0;
-  }
-
-  .new-post-btn {
-    padding: 8px 16px;
-    background: #f59e0b;
+  .member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
     color: #000;
     font-size: 13px;
-    font-weight: 600;
-    border-radius: 16px;
-    text-decoration: none;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .posts-list {
+  .member-name {
+    flex: 1;
+    font-size: 14px;
+    color: #fff;
+  }
+
+  .owner-badge {
+    font-size: 14px;
+  }
+
+  /* 联赛信息 */
+  .info-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
-  .post-item {
-    display: block;
-    padding: 16px;
-    background: #1a1a1a;
-    border: 1px solid #222;
-    border-radius: 10px;
-    text-decoration: none;
-    transition: all 0.2s;
-  }
-
-  .post-item:hover {
-    border-color: #f59e0b;
-  }
-
-  .post-content h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-    margin: 0 0 8px 0;
-  }
-
-  .post-content p {
-    font-size: 14px;
-    color: #888;
-    margin: 0;
-    line-height: 1.5;
-  }
-
-  .post-meta {
+  .info-row {
     display: flex;
-    gap: 16px;
-    margin-top: 12px;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .info-label {
     font-size: 13px;
-    color: #666;
+    color: #888;
   }
 
-  .no-posts {
-    text-align: center;
-    padding: 40px 20px;
-    color: #666;
-  }
-
-  .no-posts .icon {
-    font-size: 40px;
-    margin-bottom: 12px;
-  }
-
-  .no-posts p {
-    margin: 0 0 16px 0;
-  }
-
-  .post-btn {
-    display: inline-block;
-    padding: 10px 24px;
-    background: #f59e0b;
-    color: #000;
-    font-weight: 600;
-    border-radius: 20px;
-    text-decoration: none;
+  .info-value {
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
   }
 
   /* 加载和错误状态 */
   .loading, .not-found {
     text-align: center;
     padding: 80px 20px;
+  }
+
+  .loading-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    animation: bounce 1s infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 
   .not-found .icon {
@@ -595,12 +836,7 @@ const styles = `
   .not-found h2 {
     font-size: 20px;
     color: #fff;
-    margin: 0 0 8px 0;
-  }
-
-  .not-found p {
-    color: #666;
-    margin: 0 0 24px 0;
+    margin: 0 0 16px 0;
   }
 
   .back-btn {
@@ -614,19 +850,41 @@ const styles = `
   }
 
   /* 响应式 */
-  @media (max-width: 768px) {
-    .league-header {
+  @media (max-width: 900px) {
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .quick-actions {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .league-header-inner {
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
       text-align: center;
     }
 
-    .header-content {
+    .league-info {
       flex-direction: column;
     }
+  }
 
-    .content-grid {
-      grid-template-columns: 1fr;
+  @media (max-width: 600px) {
+    .quick-actions {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .league-nav-inner {
+      padding: 0 8px;
+    }
+
+    .league-nav-link {
+      padding: 12px;
+    }
+
+    .nav-label {
+      display: none;
     }
   }
 `;
