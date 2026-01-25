@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import { useLang } from "@/lib/lang";
-import { listInsights, Insight } from "@/lib/store";
+import { listInsights, listLeagues, Insight, League } from "@/lib/store";
 
 const CATEGORIES = [
   { id: "all", label: "推荐", labelEn: "For You" },
@@ -18,18 +18,30 @@ const CATEGORIES = [
 export default function HomePage() {
   const { t, lang } = useLang();
   const [insights, setInsights] = useState<Insight[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const data = await listInsights();
+        const [insightsData, leaguesData] = await Promise.all([
+          listInsights(),
+          listLeagues(),
+        ]);
+        
         setInsights(
-          data.sort(
+          insightsData.sort(
             (a, b) =>
               new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
+        );
+        
+        // 只取公开联赛，最多显示 5 个
+        setLeagues(
+          leaguesData
+            .filter(l => l.visibility === "public")
+            .slice(0, 5)
         );
       } catch (e) {
         console.error(e);
@@ -101,6 +113,36 @@ export default function HomePage() {
         </nav>
 
         <div className="feed-container">
+          {/* 联赛入口 */}
+          <div className="leagues-section">
+            <div className="section-header">
+              <h2>{t("🏆 公开联赛", "🏆 Public Leagues")}</h2>
+              <Link href="/leagues" className="see-all">
+                {t("查看全部", "See All")} →
+              </Link>
+            </div>
+            
+            <div className="leagues-row">
+              {leagues.length === 0 ? (
+                <div className="no-leagues">
+                  <p>{t("还没有公开联赛", "No public leagues yet")}</p>
+                </div>
+              ) : (
+                leagues.map(league => (
+                  <Link href={`/league/${league.slug}`} key={league.id} className="league-item">
+                    <span className="league-icon">🏆</span>
+                    <span className="league-name">{league.name}</span>
+                  </Link>
+                ))
+              )}
+              <Link href="/leagues/new" className="league-item create-league">
+                <span className="league-icon">+</span>
+                <span className="league-name">{t("创建联赛", "Create")}</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 帖子列表 */}
           {filteredInsights.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">📝</div>
@@ -175,6 +217,105 @@ const styles = `
   .feed-page {
     min-height: 100vh;
     background: #0a0a0a;
+  }
+
+  /* 联赛入口 */
+  .leagues-section {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: #111;
+    border: 1px solid #1a1a1a;
+    border-radius: 16px;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .section-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+  }
+
+  .see-all {
+    font-size: 14px;
+    color: #f59e0b;
+    text-decoration: none;
+  }
+
+  .see-all:hover {
+    text-decoration: underline;
+  }
+
+  .leagues-row {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .leagues-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .league-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+    background: #1a1a1a;
+    border: 1px solid #222;
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    min-width: 100px;
+    transition: all 0.2s;
+  }
+
+  .league-item:hover {
+    border-color: #f59e0b;
+    transform: translateY(-2px);
+  }
+
+  .league-item .league-icon {
+    font-size: 24px;
+  }
+
+  .league-item .league-name {
+    font-size: 13px;
+    color: #ccc;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+  }
+
+  .league-item.create-league {
+    border-style: dashed;
+    border-color: #333;
+  }
+
+  .league-item.create-league .league-icon {
+    color: #f59e0b;
+  }
+
+  .league-item.create-league:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .no-leagues {
+    padding: 20px;
+    color: #666;
+    font-size: 14px;
   }
 
   /* 分类导航 */
