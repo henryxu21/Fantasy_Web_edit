@@ -3,9 +3,7 @@
 
 const API_BASE = "https://api.balldontlie.io/v1";
 
-// 把你的 API Key 放到环境变量或直接替换这里
-const API_KEY = process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || "14fd7de0-c9c0-40d3-bbeb-e8c86a61d56a";
-
+const API_KEY = "14fd7de0-c9c0-40d3-bbeb-e8c86a61d56a";
 // ==================== Types ====================
 
 export type BDLTeam = {
