@@ -1,22 +1,23 @@
 // app/league/[slug]/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { 
+import { useState, useEffect, use } from "react";
+import {
   supabase,
-  getCurrentUser, 
-  joinLeague, 
+  joinLeague,
   startDraft,
   subscribeToLeague,
   type League,
   type Team
 } from "@/lib/supabase";
+import { getSessionUser } from "@/lib/store";
 
 // 先导入选秀房间组件（稍后创建）
 // import DraftRoom from "@/components/DraftRoom";
 
-export default function LeaguePage({ params }: { params: { slug: string } }) {
-  const leagueId = params.slug;
+export default function LeaguePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+  const leagueId = slug;
   
   const [league, setLeague] = useState<League | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -47,11 +48,15 @@ export default function LeaguePage({ params }: { params: { slug: string } }) {
 
   async function init() {
     try {
-      const user = await getCurrentUser();
+      const user = getSessionUser();
       setCurrentUser(user);
+    } catch (err) {
+      console.error("Auth error:", err);
+    }
+    try {
       await loadLeagueInfo();
     } catch (err) {
-      console.error("Init error:", err);
+      console.error("Load error:", err);
     } finally {
       setLoading(false);
     }
@@ -80,7 +85,7 @@ export default function LeaguePage({ params }: { params: { slug: string } }) {
       setTeams(teamsData || []);
 
       // 3. 找到我的队伍
-      const user = await getCurrentUser();
+      const user = getSessionUser();
       if (user) {
         const myTeamData = teamsData?.find(t => t.user_id === user.id);
         setMyTeam(myTeamData || null);

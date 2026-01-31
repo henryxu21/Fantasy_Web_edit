@@ -2,26 +2,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-// GET: Debug endpoint to check table schema
-export async function GET() {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("leagues")
-      .select("*")
-      .limit(1);
-
-    if (error) {
-      return NextResponse.json({ error: error.message, hint: error.hint, details: error.details });
-    }
-
-    // Return column names from first row, or empty select info
-    const columns = data && data.length > 0 ? Object.keys(data[0]) : "no rows - try inserting with just name";
-    return NextResponse.json({ columns, sample: data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message });
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
