@@ -1,6 +1,4 @@
 {
-  "/auth/login/page": "app/auth/login/page.js",
-  "/league/new/page": "app/league/new/page.js",
-  "/league/page": "app/league/page.js",
+  "/insights/[id]/page": "app/insights/[id]/page.js",
   "/page": "app/page.js"
 }
