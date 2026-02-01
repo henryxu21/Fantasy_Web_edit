@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createLeague } from "@/lib/store";
 
 export default function NewLeaguePage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,40 +27,16 @@ export default function NewLeaguePage() {
     setSubmitting(true);
     setError(null);
 
-    try {
-      // 直接插入数据，使用测试用户ID
-      const testUserId = "test-user-" + Date.now();
-      
-      const { data: league, error: createError } = await supabase
-        .from('leagues')
-        .insert({
-          name: name.trim(),
-          commissioner_id: testUserId,
-          max_teams: 10,
-          draft_type: 'snake',
-        })
-        .select()
-        .single();
+    const result = await createLeague({ name, visibility });
 
-      if (createError) throw createError;
-
-      // 创建选秀设置
-      await supabase
-        .from('draft_settings')
-        .insert({
-          league_id: league.id,
-          draft_type: 'snake',
-        });
-
-      alert('联赛创建成功！ID: ' + league.id);
-      
-      // 跳转到联赛页面
-      router.push(`/league/${league.id}`);
-    } catch (err: any) {
-      console.error('Create league error:', err);
-      setError(err.message || "创建失败");
+    if (!result.ok) {
+      setError(result.error);
       setSubmitting(false);
+      return;
     }
+
+    // 跳转到联赛页面
+    router.push(`/league/${result.league.slug}`);
   }
 
   return (
@@ -141,6 +118,55 @@ export default function NewLeaguePage() {
               </div>
             </div>
 
+            {/* 可见性 */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#fff',
+                marginBottom: '8px'
+              }}>
+                可见性
+              </label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("public")}
+                  disabled={submitting}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: visibility === "public" ? 'rgba(245, 158, 11, 0.2)' : '#1a1a1a',
+                    border: visibility === "public" ? '1px solid #f59e0b' : '1px solid #333',
+                    borderRadius: '10px',
+                    color: visibility === "public" ? '#f59e0b' : '#888',
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🌐 公开
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("private")}
+                  disabled={submitting}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: visibility === "private" ? 'rgba(245, 158, 11, 0.2)' : '#1a1a1a',
+                    border: visibility === "private" ? '1px solid #f59e0b' : '1px solid #333',
+                    borderRadius: '10px',
+                    color: visibility === "private" ? '#f59e0b' : '#888',
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔒 私密
+                </button>
+              </div>
+            </div>
+
             {/* 错误提示 */}
             {error && (
               <div style={{
@@ -199,18 +225,6 @@ export default function NewLeaguePage() {
             </div>
           </form>
 
-          {/* 测试提示 */}
-          <div style={{
-            marginTop: '24px',
-            padding: '12px',
-            background: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '8px',
-            fontSize: '13px',
-            color: '#60a5fa'
-          }}>
-            ⚠️ 测试模式：使用临时用户ID创建联赛
-          </div>
         </div>
       </div>
     </div>
