@@ -53,7 +53,7 @@ export default function RosterPage() {
   const [rosteredIds, setRosteredIds] = useState<(number | string)[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [savingId, setSavingId] = useState<number | null>(null);
+  const [savingId, setSavingId] = useState<string | number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function RosterPage() {
     setError(null);
     const { error: insertError } = await supabase.from("team_rosters").insert({
       team_id: myTeam.id,
-      player_id: player.id,
+      player_id: Number(player.id),
       player_name: player.name,
       player_team: player.team,
       player_position: player.position,
@@ -273,7 +273,7 @@ export default function RosterPage() {
                     </div>
                     <button
                       onClick={() => addPlayer(p)}
-                      disabled={savingId === p.id}
+                      disabled={savingId !== null && String(savingId) === String(p.id)}
                       style={{
                         border: "none",
                         padding: "6px 10px",
