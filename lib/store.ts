@@ -738,7 +738,7 @@
      joined_at: string;
      team_name?: string;
      draft_position?: number;
-     user?: User;
+     user?: Pick<User, "id" | "name" | "username" | "avatar_url">;
    };
 
    // 获取联赛成员列表
